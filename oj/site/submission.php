@@ -97,14 +97,8 @@ require __DIR__ . '/inc/header.php';
 </div>
 
 <?php if ($details): ?>
-<?php
-$canDl = $currentUser && ($sub['username'] === $currentUser['username'] || isAdmin())
-    && in_array(strtoupper($sub['status']), ['WA','TLE','MLE','RE','OLE','CE','SE']);
-?>
 <div id="liveScore" style="font-size:16px;color:#fff;margin-bottom:8px"></div>
-<h2 style="font-size:13px;color:#fff;font-weight:400;margin-bottom:10px;letter-spacing:1px">测试详情 (<?=count($details)?>)
-<?php if ($canDl): ?><a href="api/download_failed_data.php?id=<?=$id?>" style="float:right;display:inline-block;padding:4px 14px;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;font-size:11px;text-decoration:none;letter-spacing:0">⬇ 下载非AC测试数据</a><?php endif ?>
-</h2>
+<h2 style="font-size:13px;color:#fff;font-weight:400;margin-bottom:10px;letter-spacing:1px">测试详情 (<?=count($details)?>)</h2>
 <div class="tc-list">
 <?php foreach ($details as $i => $r): 
   $v = strtolower($r['verdict'] ?? 'se');
@@ -129,6 +123,14 @@ $canDl = $currentUser && ($sub['username'] === $currentUser['username'] || isAdm
     <div><label>评测信息</label><div class="error-msg"><?=htmlspecialchars($r['error'])?></div></div>
     <?php endif ?>
     <div style="color:#888;font-size:10px;margin-top:6px">退出码: <?=$r['exit_code']??'?'?></div>
+    <?php if (!$passed && in_array(strtoupper($sub['status']), ['WA','TLE','MLE','RE','OLE','CE','SE'])): ?>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid #222">
+      <span style="color:#888;font-size:10px">数据下载:</span>
+      <a href="api/download_data.php?submission_id=<?=$id?>&case=<?=$i+1?>&type=in" style="color:#5af;text-decoration:none;font-size:11px;margin-left:8px">输入</a>
+      <a href="api/download_data.php?submission_id=<?=$id?>&case=<?=$i+1?>&type=out" style="color:#5af;text-decoration:none;font-size:11px;margin-left:10px">期望输出</a>
+      <a href="api/download_data.php?submission_id=<?=$id?>&case=<?=$i+1?>&type=user_out" style="color:#5af;text-decoration:none;font-size:11px;margin-left:10px">我的输出</a>
+    </div>
+    <?php endif ?>
   </div>
 </div>
 <?php endforeach ?>
