@@ -14,4 +14,4 @@ nohup.out
 oj/site/inc/config.php
 
 # 本地备份
-*.bak
+*.bak*
