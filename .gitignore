@@ -1,0 +1,14 @@
+# 数据
+oj-mysql/
+data/problems/*
+!data/problems/.gitkeep
+
+# 运行时
+*.log
+__pycache__/
+*.pyc
+nohup.out
+
+# 敏感配置
+.env
+oj/site/inc/config.php

@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  judge:
+    build: ./judge
+    container_name: zxt-judge
+    ports:
+      - "${JUDGE_PORT:-18000}:8000"
+    environment:
+      - JUDGE_PORT=8000
+      - JUDGE_CPU_LIMIT=${JUDGE_CPU_LIMIT:-0.5}
+      - JUDGE_MEM_LIMIT=${JUDGE_MEM_LIMIT:-512m}
+      - JUDGE_POOL_SIZE=${JUDGE_POOL_SIZE:-3}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /data:/data
+      - /tmp/judge_workspace:/tmp/judge_workspace
+      - /tmp/judge_shared:/tmp/judge_shared
+    restart: unless-stopped
+
+  oj:
+    build: ./oj
+    container_name: zxt-oj
+    ports:
+      - "${OJ_PORT:-18001}:80"
+    environment:
+      - JUDGE_URL=${JUDGE_URL:-http://127.0.0.1:18000}
+      - DB_HOST=127.0.0.1
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASS=${DB_PASS:-zxt_oj_pass_2026}
+    volumes:
+      - ./oj-mysql:/var/lib/mysql
+    depends_on:
+      - judge
+    restart: unless-stopped
