@@ -97,8 +97,14 @@ require __DIR__ . '/inc/header.php';
 </div>
 
 <?php if ($details): ?>
+<?php
+$canDl = $currentUser && ($sub['username'] === $currentUser['username'] || isAdmin())
+    && in_array(strtoupper($sub['status']), ['WA','TLE','MLE','RE','OLE','CE','SE']);
+?>
 <div id="liveScore" style="font-size:16px;color:#fff;margin-bottom:8px"></div>
-<h2 style="font-size:13px;color:#fff;font-weight:400;margin-bottom:10px;letter-spacing:1px">测试详情 (<?=count($details)?>)</h2>
+<h2 style="font-size:13px;color:#fff;font-weight:400;margin-bottom:10px;letter-spacing:1px">测试详情 (<?=count($details)?>)
+<?php if ($canDl): ?><a href="api/download_failed_data.php?id=<?=$id?>" style="float:right;display:inline-block;padding:4px 14px;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;font-size:11px;text-decoration:none;letter-spacing:0">⬇ 下载非AC测试数据</a><?php endif ?>
+</h2>
 <div class="tc-list">
 <?php foreach ($details as $i => $r): 
   $v = strtolower($r['verdict'] ?? 'se');
