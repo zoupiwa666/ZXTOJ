@@ -70,19 +70,55 @@ fi
 # 6. 准备数据目录和配置
 mkdir -p data/problems oj-mysql
 chmod 777 data oj-mysql 2>/dev/null
-# 自动创建 .env（如果不存在）
+# 交互式配置环境变量（首次启动询问）
 if [ ! -f .env ]; then
-  info "创建默认 .env 配置..."
+  echo ""
+  echo -e "${YELLOW}========== 首次启动配置 ==========${NC}"
+  echo -e "（直接回车使用默认值）"
+  echo ""
+
+  read -p "评测机端口 [默认 18000]: " inp
+  JUDGE_PORT=${inp:-18000}
+
+  read -p "OJ 端口 [默认 18001]: " inp
+  OJ_PORT=${inp:-18001}
+
+  read -p "沙箱 CPU 限制(核) [默认 0.5]: " inp
+  JUDGE_CPU_LIMIT=${inp:-0.5}
+
+  read -p "沙箱内存限制 [默认 512m]: " inp
+  JUDGE_MEM_LIMIT=${inp:-512m}
+
+  read -p "预热容器数 [默认 3]: " inp
+  JUDGE_POOL_SIZE=${inp:-3}
+
+  read -p "数据库密码 [默认 zxt_oj_pass_2026]: " inp
+  DB_PASS=${inp:-zxt_oj_pass_2026}
+
+  # 生成 .env
   cat > .env << ENVEOF
-JUDGE_PORT=18000
-JUDGE_CPU_LIMIT=0.5
-JUDGE_MEM_LIMIT=512m
-JUDGE_POOL_SIZE=3
-OJ_PORT=18001
+JUDGE_PORT=$JUDGE_PORT
+JUDGE_CPU_LIMIT=$JUDGE_CPU_LIMIT
+JUDGE_MEM_LIMIT=$JUDGE_MEM_LIMIT
+JUDGE_POOL_SIZE=$JUDGE_POOL_SIZE
+OJ_PORT=$OJ_PORT
 JUDGE_URL=http://zxt-judge:8000
-DB_PASS=zxt_oj_pass_2026
+DB_PASS=$DB_PASS
 ENVEOF
-  ok ".env 已创建（可修改）"
+
+  echo ""
+  echo -e "${GREEN}========== 配置完成 ==========${NC}"
+  echo -e "  评测机端口: ${YELLOW}$JUDGE_PORT${NC}"
+  echo -e "  OJ 端口:    ${YELLOW}$OJ_PORT${NC}"
+  echo -e "  CPU 限制:   ${YELLOW}$JUDGE_CPU_LIMIT${NC}"
+  echo -e "  内存限制:   ${YELLOW}$JUDGE_MEM_LIMIT${NC}"
+  echo -e "  容器数:     ${YELLOW}$JUDGE_POOL_SIZE${NC}"
+  echo -e "  数据库密码: ${YELLOW}$DB_PASS${NC}"
+  echo -e "${GREEN}===============================${NC}"
+  echo ""
+  info "配置已保存到 .env（可随时修改）"
+else
+  info "检测到已有 .env，使用现有配置"
 fi
 # 题目数据目录保留
 mkdir -p data/problems
