@@ -26,6 +26,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("UPDATE problems SET title=?,background=?,description=?,input_format=?,output_format=?,hints=?,time_limit=?,memory_limit=?,visibility=? WHERE problem_id=?")
                 ->execute([$title,$bg,$desc,$inf,$outf,$hint,$tl,$ml,$vis,$pid]);
         }
+        // 同步时限到数据目录 config.yaml（评测时以 config.yaml 为准）
+        $dataDir = "/data/problems/$pid";
+        @mkdir($dataDir, 0777, true);
+        $cfgPath = "$dataDir/config.yaml";
+        $cfg = file_exists($cfgPath) ? file_get_contents($cfgPath) : "";
+        if (preg_match('/^time_limit\s*:/m', $cfg)) {
+            $cfg = preg_replace('/^time_limit\s*:.*$/m', "time_limit: $tl", $cfg);
+        } else { $cfg .= ($cfg==='' ? "" : "\n") . "time_limit: $tl\n"; }
+        if (preg_match('/^memory_limit\s*:/m', $cfg)) {
+            $cfg = preg_replace('/^memory_limit\s*:.*$/m', "memory_limit: $ml", $cfg);
+        } else { $cfg .= "memory_limit: $ml\n"; }
+        file_put_contents($cfgPath, $cfg);
         $msg='已保存。';
     }
     elseif ($action === 'save_samples' && !$isNew) {

@@ -136,24 +136,6 @@ def main():
         # 从文件读取测试用例（新架构）
         lang=cfg["language"]; tl=cfg.get("time_limit",2.0); ml=cfg.get("memory_limit",128); ol=cfg.get("output_limit",1024*1024); workers=cfg.get("parallel_workers",3)
         data_dir = cfg.get('data_dir', '')
-        # 题目级时限：数据目录 config.yaml 优先于任务请求参数
-        if data_dir and os.path.isdir(data_dir):
-            for cf in ('config.yaml', 'config.yml'):
-                cf_path = os.path.join(data_dir, cf)
-                if os.path.exists(cf_path):
-                    try:
-                        for line in open(cf_path, 'r', encoding='utf-8', errors='replace'):
-                            line = line.split('#')[0].strip()
-                            if ':' in line:
-                                k, v = line.split(':', 1)
-                                k, v = k.strip(), v.strip().strip('"\'')
-                                if k == 'time_limit' and v:
-                                    tl = float(v)
-                                elif k == 'memory_limit' and v:
-                                    ml = int(float(v))
-                    except Exception as e:
-                        print(f'[config.yaml] 解析失败: {e}', file=sys.stderr)
-                    break
         if data_dir and os.path.isdir(data_dir):
             cases = []
             i = 1

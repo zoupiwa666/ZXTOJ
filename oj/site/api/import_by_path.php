@@ -47,5 +47,11 @@ foreach ($info['test_cases'] as $tc) {
 if (isset($info['time_limit'])) $pdo->prepare("UPDATE problems SET time_limit=? WHERE problem_id=?")->execute([floatval($info['time_limit']), $pid]);
 if (isset($info['memory_limit'])) $pdo->prepare("UPDATE problems SET memory_limit=? WHERE problem_id=?")->execute([intval($info['memory_limit']), $pid]);
 
+// 写入 config.yaml，把时限等绑定到数据目录（评测时以 config.yaml 为准）
+$cfgTl = floatval($info['time_limit'] ?? 2.0);
+$cfgMl = intval($info['memory_limit'] ?? 128);
+$cfgName = preg_replace('/[\r\n:]+/', ' ', $info['name'] ?? $pid);
+file_put_contents("$dir/config.yaml", "name: $cfgName\ntime_limit: $cfgTl\nmemory_limit: $cfgMl\ntest_cases: ".($i-1)."\n");
+
 echo json_encode(['ok'=>true, 'message'=>"导入成功！".($i-1)."个测试点，数据已写入 /data/problems/$pid/"]);
 if (isset($tmp) && file_exists($tmp)) @unlink($tmp);
