@@ -12,3 +12,6 @@ nohup.out
 # 敏感配置
 .env
 oj/site/inc/config.php
+
+# 本地备份
+*.bak

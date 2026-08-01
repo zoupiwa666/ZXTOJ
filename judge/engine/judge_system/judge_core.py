@@ -17,10 +17,10 @@ def compile_code(workdir, lang, shared_dir):
         except: pass
         open(dst,'wb').write(data)
     cmds = {
-        "c":["gcc","-std=c11","-O1","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.c","-lm"],
-        "cpp14":["g++","-std=c++14","-O1","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.cpp","-lm"],
-        "cpp17":["g++","-std=c++17","-O1","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.cpp","-lm"],
-        "cpp20":["g++","-std=c++20","-O1","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.cpp","-lm"],
+        "c":["gcc","-std=c11","-O2","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.c","-lm"],
+        "cpp14":["g++","-std=c++14","-O2","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.cpp","-lm"],
+        "cpp17":["g++","-std=c++17","-O2","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.cpp","-lm"],
+        "cpp20":["g++","-std=c++20","-O2","-o",f"{shared_dir}/solution",f"{shared_dir}/solution.cpp","-lm"],
     }
     cmd = cmds.get(lang)
     if not cmd: return True, None
