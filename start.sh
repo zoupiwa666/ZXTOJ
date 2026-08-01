@@ -67,9 +67,26 @@ else
   ok "OJ 镜像已存在"
 fi
 
-# 6. 准备数据目录
+# 6. 准备数据目录和配置
 mkdir -p data/problems oj-mysql
 chmod 777 data oj-mysql 2>/dev/null
+# 自动创建 .env（如果不存在）
+if [ ! -f .env ]; then
+  info "创建默认 .env 配置..."
+  cat > .env << ENVEOF
+JUDGE_PORT=18000
+JUDGE_CPU_LIMIT=0.5
+JUDGE_MEM_LIMIT=512m
+JUDGE_POOL_SIZE=3
+OJ_PORT=18001
+JUDGE_URL=http://zxt-judge:8000
+DB_PASS=zxt_oj_pass_2026
+ENVEOF
+  ok ".env 已创建（可修改）"
+fi
+# 题目数据目录保留
+mkdir -p data/problems
+touch data/problems/.gitkeep
 
 # 7. 启动评测机容器
 info "启动评测机容器..."
