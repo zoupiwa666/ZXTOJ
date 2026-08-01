@@ -41,6 +41,12 @@ def process_submission(sid, username, problem_id, language, code):
     try:
         conn = pymysql.connect(**DB)
         cur = conn.cursor(pymysql.cursors.DictCursor)
+        # 领取任务立即标记，避免主循环重复领取同一任务
+        cur.execute("UPDATE submissions SET status='judging' WHERE id=%s AND status='waiting'", (sid,))
+        if cur.rowcount == 0:
+            conn.close()
+            return  # 已被其他线程领取，跳过
+        conn.commit()
         print(f"[W] #{sid} {problem_id} judging")
         res = api('/judge_by_problem', {'problem_id': problem_id, 'language': language, 'code': code, 'time_limit': 2.0, 'memory_limit': 128})
         task_id = res.get('task_id')
@@ -113,12 +119,12 @@ def main():
                 while len(futures) < MAX_WORKERS:
                     conn = pymysql.connect(**DB)
                     cur = conn.cursor(pymysql.cursors.DictCursor)
-                    cur.execute("SELECT * FROM submissions WHERE status='waiting' ORDER BY id LIMIT %s", (MAX_WORKERS - len(futures),))
-                    subs = cur.fetchall()
+                    cur.execute("SELECT * FROM submissions WHERE status='waiting' ORDER BY id LIMIT 1")
+                    sub = cur.fetchone()
                     conn.close()
-                    if not subs: break
-                    for s in subs:
-                        futures.add(pool.submit(process_submission, s['id'], s['username'], s['problem_id'], s['language'], s['code']))
+                    if not sub: break
+                    futures.add(pool.submit(process_submission, sub['id'], sub['username'], sub['problem_id'], sub['language'], sub['code']))
+                    time.sleep(0.3)  # 给线程执行 judging 标记的时间，避免重复领取
                 time.sleep(2)
             except Exception as e:
                 print(f"[W] main error: {e}"); time.sleep(3)
