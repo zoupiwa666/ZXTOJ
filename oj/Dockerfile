@@ -18,6 +18,7 @@ COPY site/ /var/www/oj/
 COPY config_gen.php /var/www/oj/config_gen.php
 COPY init.sql /var/www/oj/init.sql
 COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY php-fpm-www.conf /usr/local/etc/php-fpm.d/www.conf
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
