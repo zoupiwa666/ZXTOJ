@@ -1,9 +1,11 @@
 # 评测机引擎容器
 FROM python:3.11-slim
 
-# 国内 apt 源（阿里云）
-RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
-    sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list
+# 国内 apt 源（阿里云，直接覆盖 deb822 源文件）
+RUN rm -f /etc/apt/sources.list.d/debian.sources && \
+    echo "deb http://mirrors.aliyun.com/debian/ trixie main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian/ trixie-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian-security trixie-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list
 RUN apt-get update && apt-get install -y --no-install-recommends docker.io curl     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
