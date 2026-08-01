@@ -37,7 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (preg_match('/^memory_limit\s*:/m', $cfg)) {
             $cfg = preg_replace('/^memory_limit\s*:.*$/m', "memory_limit: $ml", $cfg);
         } else { $cfg .= "memory_limit: $ml\n"; }
-        file_put_contents($cfgPath, $cfg);
+        // 目录可写即可删除重建，规避 root 属主文件不可写问题
+        if (!@file_put_contents($cfgPath, $cfg)) {
+            @unlink($cfgPath);
+            file_put_contents($cfgPath, $cfg);
+        }
         $msg='已保存。';
     }
     elseif ($action === 'save_samples' && !$isNew) {
