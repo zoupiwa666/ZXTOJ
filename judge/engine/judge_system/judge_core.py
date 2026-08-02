@@ -200,6 +200,12 @@ def main():
                for i,c in enumerate(cases)]
         all_r=[None]*len(cases)
 
+        if not cases:
+            result["status"]="failed"
+            result["system_error"]="题目无测试数据：请先在题目管理页导入测试数据包（/data/problems 下缺少 1.in/1.out）"
+            (Path(args.output_dir)/"result.json").write_text(json.dumps(result,ensure_ascii=False))
+            return
+
         with ThreadPoolExecutor(max_workers=min(workers,len(cases))) as executor:
             futures={executor.submit(process_one_case,ta):ta[0] for ta in tasks}
             for future in as_completed(futures):
