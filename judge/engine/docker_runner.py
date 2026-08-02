@@ -9,6 +9,8 @@ from config import (
 
 SHARED_HOST_DIR = "/tmp/judge_shared"
 SHARED_CONTAINER_DIR = "/tmp/shared"
+# 宿主机题目数据目录（start.sh 通过 DATA_HOST_DIR 自动传入，兼容任意部署路径；默认 /data）
+HOST_DATA_DIR = os.environ.get("DATA_HOST_DIR", "/data") or "/data"
 os.makedirs(SHARED_HOST_DIR, exist_ok=True)
 os.chmod(SHARED_HOST_DIR, 0o777)
 
@@ -54,7 +56,7 @@ class ContainerPool:
                "--security-opt", "no-new-privileges:true", "--cap-drop", "ALL",
                "--read-only", "--tmpfs", "/tmp:size=64m,nosuid",
                "-v", f"{SHARED_HOST_DIR}:{SHARED_CONTAINER_DIR}",
-               "-v", "/data:/data:ro",
+               "-v", f"{HOST_DATA_DIR}:/data:ro",
                "-v", f"{TEMP_DIR}:{TEMP_DIR}:ro",  # 只读挂载主机临时目录
                "--entrypoint", ""]
         if CONTAINER_NETWORK_DISABLED: cmd.extend(["--network", "none"])
