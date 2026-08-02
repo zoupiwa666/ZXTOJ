@@ -48,17 +48,17 @@ DB_PASS=zxt_oj_pass_2026          # 内置数据库密码
 ## 部署
 
 ```bash
-cd /opt/oj-deploy
+cd /ZXTOJ  #到项目文件夹下，这里默认ZXTOJ
 
-# 1. 构建评测沙箱镜像（评测机容器会用）
-docker build -t judge-sandbox:latest ./judge/engine
 
-# 2. 启动
-docker compose up -d --build
+# 1. 自动安装脚本
+run start.sh
 
-# 3. 访问
-# OJ:  http://服务器IP:18001
-# 评测: http://服务器IP:18000
+# 注意这里再安装完所有依赖后，会询问你环境变量配置，可以设置评测机/OJ端口，默认是18001/18000
+
+# 2. 访问
+# OJ:  http://服务器IP:你的OJ IP（默认18001）
+# 评测: http://服务器IP:你的评测系统 IP（默认18000）
 ```
 
 ## 注意事项
