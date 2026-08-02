@@ -124,6 +124,54 @@ fi
 mkdir -p data/problems
 touch data/problems/.gitkeep
 
+# 为示例题目 P1000 自动生成测试数据（仅当 1.in 或 config.yaml 缺失时生成，不会覆盖已有数据）
+if [ ! -f data/problems/P1000/1.in ] || [ ! -f data/problems/P1000/config.yaml ]; then
+  info "初始化示例题目 P1000 测试数据..."
+  mkdir -p data/problems/P1000
+  cat > data/problems/P1000/1.in <<'XEOF'
+1 2
+XEOF
+  cat > data/problems/P1000/1.out <<'XEOF'
+3
+XEOF
+  cat > data/problems/P1000/2.in <<'XEOF'
+100 200
+XEOF
+  cat > data/problems/P1000/2.out <<'XEOF'
+300
+XEOF
+  cat > data/problems/P1000/3.in <<'XEOF'
+0 0
+XEOF
+  cat > data/problems/P1000/3.out <<'XEOF'
+0
+XEOF
+  cat > data/problems/P1000/4.in <<'XEOF'
+123456789 987654321
+XEOF
+  cat > data/problems/P1000/4.out <<'XEOF'
+1111111110
+XEOF
+  cat > data/problems/P1000/5.in <<'XEOF'
+1000000000 1000000000
+XEOF
+  cat > data/problems/P1000/5.out <<'XEOF'
+2000000000
+XEOF
+  for i in 1 2 3 4 5; do echo 20 > data/problems/P1000/$i.score; done
+  cat > data/problems/P1000/config.yaml <<'XEOF'
+name: A+B Problem
+time_limit: 2.0
+memory_limit: 128
+test_cases: 5
+scores: [20, 20, 20, 20, 20]
+XEOF
+  chmod -R 777 data/problems/P1000
+  ok "P1000 测试数据已生成（5 个测试点）"
+else
+  ok "P1000 测试数据已存在，跳过"
+fi
+
 # 7. 启动评测机容器
 info "启动评测机容器..."
 docker rm -f zxt-judge 2>/dev/null || true
