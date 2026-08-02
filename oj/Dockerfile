@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx mariadb-server zip unzip curl python3 python3-pip \
     libpng-dev libzip-dev libxml2-dev libonig-dev \
     && docker-php-ext-install pdo_mysql gd zip mbstring mysqli \
+    && pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
     && pip3 install --break-system-packages pymysql \
     && rm -rf /var/lib/apt/lists/*
 

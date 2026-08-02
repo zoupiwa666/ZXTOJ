@@ -10,7 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends docker.io curl 
 
 WORKDIR /app
 COPY engine/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt pymysql pyyaml
+# pip 使用国内阿里云镜像源
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip install --no-cache-dir -r requirements.txt pymysql pyyaml
 
 COPY engine/ /app/
 
