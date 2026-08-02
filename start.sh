@@ -68,8 +68,8 @@ else
 fi
 
 # 6. 准备数据目录和配置
-mkdir -p data/problems oj-mysql
-chmod 777 data oj-mysql 2>/dev/null
+mkdir -p data/problems oj-mysql /data/problems
+chmod 777 data oj-mysql /data 2>/dev/null
 # 交互式配置环境变量（首次启动询问）
 if [ ! -f .env ]; then
   echo ""
@@ -137,7 +137,7 @@ docker run -d --name zxt-judge \
   -e JUDGE_POOL_SIZE=$JUDGE_POOL_SIZE \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$DOCKER_BIN":/usr/bin/docker \
-  -v "$(pwd)/data":/data \
+  -v /data:/data \
   -v /tmp/judge_workspace:/tmp/judge_workspace \
   -v /tmp/judge_shared:/tmp/judge_shared \
   --restart unless-stopped \
@@ -155,7 +155,7 @@ docker run -d --name zxt-oj \
   -e DB_HOST=127.0.0.1 -e DB_PORT=3306 -e DB_USER=root -e DB_PASS=$DB_PASS \
   -v "$(pwd)/oj-mysql":/var/lib/mysql \
   -v "$(pwd)/oj/site":/var/www/oj \
-  -v "$(pwd)/data":/data \
+  -v /data:/data \
   --restart unless-stopped \
   zxt-oj:latest >/dev/null
 ok "OJ 容器启动"
