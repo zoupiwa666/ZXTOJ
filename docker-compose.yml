@@ -30,6 +30,7 @@ services:
       - DB_USER=root
       - DB_PASS=${DB_PASS:-zxt_oj_pass_2026}
     volumes:
+      - /data:/data
       - ./oj-mysql:/var/lib/mysql
     depends_on:
       - judge

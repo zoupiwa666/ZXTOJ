@@ -16,6 +16,10 @@ if [ -f /var/www/oj/init.sql ]; then
   mysql -u root -p$DB_PASS judge_problems < /var/www/oj/init.sql 2>/dev/null || mysql -u root judge_problems < /var/www/oj/init.sql 2>/dev/null
 fi
 
+# 确保题目数据目录存在且 oj(www-data) 可写
+mkdir -p /data/problems
+chown -R www-data:www-data /data/problems 2>/dev/null
+
 # 生成配置
 php /var/www/oj/config_gen.php
 
