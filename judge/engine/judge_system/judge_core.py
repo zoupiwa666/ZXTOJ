@@ -42,15 +42,35 @@ def run_case_sync(lang, workdir, shared_dir, inp, tl, ml, input_file=None):
         start = time.time()
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, cwd=shared_dir)
+        # 内存监控：轮询 /proc/<pid>/status 的 VmHWM（峰值内存），单位 kB
+        import threading
+        peak_kb = [0]
+        stop_ev = threading.Event()
+        def _mem_monitor():
+            while not stop_ev.is_set():
+                try:
+                    with open(f'/proc/{proc.pid}/status') as f:
+                        for line in f:
+                            if line.startswith('VmHWM'):
+                                v = int(line.split()[1])
+                                if v > peak_kb[0]: peak_kb[0] = v
+                                break
+                except Exception:
+                    pass
+                stop_ev.wait(0.05)
+        mon = threading.Thread(target=_mem_monitor, daemon=True)
+        mon.start()
         try:
             out, err = proc.communicate(input=inp.encode() if inp else None, timeout=tl)
         except subprocess.TimeoutExpired:
             proc.kill(); proc.wait()
-            return {"output":"","time_used":tl,"memory_used":0,"exit_code":None,"verdict":V_TLE,"error":"运行超时"}
+            stop_ev.set(); mon.join(timeout=1)
+            return {"output":"","time_used":tl,"memory_used":round(peak_kb[0]/1024,2),"exit_code":None,"verdict":V_TLE,"error":"运行超时"}
+        stop_ev.set(); mon.join(timeout=1)
         elapsed = round(time.time()-start, 3)
         output = out.decode(errors="replace")
         err_output = err.decode(errors="replace")
-        mem = 0
+        mem = round(peak_kb[0] / 1024, 2)  # kB -> MB
         verdict = V_AC; error = None
         if mem > ml: verdict=V_MLE; error=f"内存超限: {mem:.1f}MB > {ml}MB"
         elif proc.returncode != 0:

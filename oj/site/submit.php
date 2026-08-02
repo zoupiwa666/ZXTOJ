@@ -53,7 +53,30 @@ textarea:focus{border-color:#444}
   <?php if ($hasData): ?>
   <select id="lang"><option value="python3">Python 3</option><option value="cpp17">C++17</option><option value="cpp20">C++20</option><option value="cpp14">C++14</option><option value="c">C</option></select>
   <textarea id="code" placeholder="在此粘贴代码...">print(input())</textarea>
-  <button class="btn-submit" onclick="submitCode()" id="submitBtn">提交评测</button>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+  <button class="btn-submit" onclick="submitCode()" id="submitBtn" style="flex:1">提交评测</button>
+  <button class="btn-submit" onclick="toggleStats()" id="statsBtn" style="width:110px;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c">📊 统计</button>
+  </div>
+  <div id="statsPanel" style="display:none;margin-bottom:16px;background:#141414;border:1px solid #2a2a2a;padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <b style="font-size:12px;color:#fff">📊 本题提交统计</b><span style="font-size:11px;color:#888" id="statsCount"></span>
+    </div>
+    <div id="statsLoading" style="color:#888;font-size:12px;padding:16px;text-align:center">加载中...</div>
+    <div id="statsTableWrap" style="display:none;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr>
+          <th style="text-align:left;color:#888;padding:6px 8px;border-bottom:1px solid #222">状态</th>
+          <th style="text-align:left;color:#888;padding:6px 8px;border-bottom:1px solid #222">用户</th>
+          <th style="text-align:left;color:#888;padding:6px 8px;border-bottom:1px solid #222"><a href="javascript:void(0)" onclick="loadStats('time')" style="color:#5af;text-decoration:none">用时⇅</a></th>
+          <th style="text-align:left;color:#888;padding:6px 8px;border-bottom:1px solid #222"><a href="javascript:void(0)" onclick="loadStats('memory')" style="color:#5af;text-decoration:none">内存⇅</a></th>
+          <th style="text-align:left;color:#888;padding:6px 8px;border-bottom:1px solid #222"><a href="javascript:void(0)" onclick="loadStats('score')" style="color:#5af;text-decoration:none">分数⇅</a></th>
+          <th style="text-align:left;color:#888;padding:6px 8px;border-bottom:1px solid #222">语言</th>
+          <th style="text-align:left;color:#888;padding:6px 8px;border-bottom:1px solid #222"><a href="javascript:void(0)" onclick="loadStats('date')" style="color:#5af;text-decoration:none">时间⇅</a></th>
+        </tr></thead>
+        <tbody id="statsBody"></tbody>
+      </table>
+    </div>
+  </div>
   <div id="resultArea" style="margin-top:16px">
     <div id="streamStatus" style="display:none;text-align:center;color:#888;padding:8px;font-size:12px"><span class="spinner"></span><span id="streamMsg"></span></div>
     <div id="scoreFinal" class="score-final"></div>
@@ -67,6 +90,41 @@ textarea:focus{border-color:#444}
 </div>
 
 <script>
+let statsSort='id', statsDir='desc';
+async function toggleStats(){
+ const p=document.getElementById('statsPanel');
+ if(p.style.display==='none'){ p.style.display='block'; document.getElementById('statsLoading').style.display='block'; document.getElementById('statsTableWrap').style.display='none'; loadStats(); }
+ else p.style.display='none';
+}
+async function loadStats(sort){
+ if(sort){ if(statsSort===sort){ statsDir = statsDir==='desc'?'asc':'desc'; } else { statsSort=sort; statsDir='desc'; } }
+ document.getElementById('statsLoading').style.display='block';
+ document.getElementById('statsTableWrap').style.display='none';
+ try{
+  const r=await fetch('api/problem_stats.php?problem_id=<?=$pid?>&sort='+statsSort+'&dir='+statsDir);
+  const d=await r.json();
+  document.getElementById('statsCount').textContent='共 '+d.count+' 条';
+  const tb=document.getElementById('statsBody'); tb.innerHTML='';
+  const colorMap={'AC':'#25ad40','WA':'#ff4f4f','TLE':'#ffab00','RE':'#f8603a','MLE':'#d500f9','OLE':'#0091ea','CE':'#ff9100','SE':'#999','judging':'#09f','waiting':'#666'};
+  (d.rows||[]).forEach(x=>{
+   const tr=document.createElement('tr');
+   const t=parseFloat(x.total_time)||0;
+   tr.innerHTML='<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a"><a href="submission.php?id='+x.id+'" style="color:'+(colorMap[x.status]||'#ccc')+';text-decoration:none;font-weight:600">'+x.status+'</a></td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a"><a href="user.php?name='+encodeURIComponent(x.username)+'" style="color:#ccc;text-decoration:none">'+x.username+'</a></td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;font-family:monospace;color:#aaa">'+(t>=1?t.toFixed(3)+'s':(t*1000).toFixed(0)+'ms')+'</td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;font-family:monospace;color:#aaa">'+Number(x.peak_memory).toFixed(1)+' MB</td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;color:#fff;font-weight:700">'+x.score+'</td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;color:#888">'+x.language+'</td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;color:#666;font-size:10px">'+x.created_at+'</td>';
+   tb.appendChild(tr);
+  });
+  if(!d.rows||!d.rows.length) tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#666;padding:20px">暂无提交记录</td></tr>';
+  document.getElementById('statsLoading').style.display='none';
+  document.getElementById('statsTableWrap').style.display='block';
+ }catch(e){
+  document.getElementById('statsLoading').textContent='加载失败: '+e.message;
+ }
+}
 async function submitCode(){
  const b=document.getElementById('submitBtn');b.disabled=true;b.textContent='评测中...';
 document.getElementById('results').innerHTML='';document.getElementById('scoreFinal').textContent='';document.getElementById('errBox').innerHTML='';

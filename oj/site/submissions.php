@@ -15,7 +15,10 @@ $sql = "SELECT * FROM submissions"; if ($where) $sql .= " WHERE " . implode(" AN
 $total = $pdo->prepare("SELECT COUNT(*) FROM submissions" . ($where ? " WHERE ".implode(" AND ",$where) : ""));
 $total->execute($params); $total = $total->fetchColumn();
 $totalPages = ceil($total / $perPage);
-$sql .= " ORDER BY id DESC LIMIT $perPage OFFSET $offset";
+$sortMap = ['id'=>'id','score'=>'score','time'=>'total_time','memory'=>'peak_memory','date'=>'created_at'];
+$sortCol = $sortMap[$_GET['sort'] ?? 'id'] ?? 'id';
+$sortDir = strtolower($_GET['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+$sql .= " ORDER BY $sortCol $sortDir, id DESC LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($sql); $stmt->execute($params); $rows = $stmt->fetchAll();
 
 $colorMap = ['AC'=>'#25ad40','WA'=>'#ff4f4f','TLE'=>'#ffab00','RE'=>'#f8603a','MLE'=>'#d500f9','OLE'=>'#0091ea','CE'=>'#ff9100','SE'=>'#999','judging'=>'#09f','waiting'=>'#666'];
@@ -85,7 +88,14 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
 </div>
 
 <table class="data-table">
-<thead><tr><th>状态</th><th>题目</th><th>递交者</th><th>用时</th><th>内存</th><th>语言</th><th>递交时间</th></tr></thead>
+<thead><tr>
+<th>状态</th><th>题目</th><th>递交者</th>
+<th><a href="?<?=http_build_query(array_merge($_GET,['sort'=>'time','dir'=>((($_GET['sort']??'')==='time' && ($_GET['dir']??'desc')==='asc')?'desc':'asc')]))?>" style="color:#888;text-decoration:none">用时⇅</a></th>
+<th><a href="?<?=http_build_query(array_merge($_GET,['sort'=>'memory','dir'=>((($_GET['sort']??'')==='memory' && ($_GET['dir']??'desc')==='asc')?'desc':'asc')]))?>" style="color:#888;text-decoration:none">内存⇅</a></th>
+<th><a href="?<?=http_build_query(array_merge($_GET,['sort'=>'score','dir'=>((($_GET['sort']??'')==='score' && ($_GET['dir']??'desc')==='asc')?'desc':'asc')]))?>" style="color:#888;text-decoration:none">分数⇅</a></th>
+<th>语言</th>
+<th><a href="?<?=http_build_query(array_merge($_GET,['sort'=>'date','dir'=>((($_GET['sort']??'')==='date' && ($_GET['dir']??'desc')==='asc')?'desc':'asc')]))?>" style="color:#888;text-decoration:none">递交时间⇅</a></th>
+</tr></thead>
 <tbody>
 <?php foreach($rows as $r): 
   $sc = $r['status']; $color = $colorMap[$sc] ?? '#999'; $label = $labelMap[$sc] ?? $sc;
