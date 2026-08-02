@@ -155,6 +155,7 @@ docker run -d --name zxt-oj \
   -e DB_HOST=127.0.0.1 -e DB_PORT=3306 -e DB_USER=root -e DB_PASS=$DB_PASS \
   -v "$(pwd)/oj-mysql":/var/lib/mysql \
   -v "$(pwd)/oj/site":/var/www/oj \
+  -v "$(pwd)/data":/data \
   --restart unless-stopped \
   zxt-oj:latest >/dev/null
 ok "OJ 容器启动"
