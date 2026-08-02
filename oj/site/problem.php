@@ -41,7 +41,7 @@ require __DIR__ . '/inc/header.php';
 .problem-header .meta{font-size:12px;color:#888;margin-bottom:12px;display:flex;gap:16px;align-items:center}
 .problem-header .meta a{color:#ddd;text-decoration:none;margin-left:auto;padding:8px 24px;background:#2a2a2a;font-size:13px;letter-spacing:1px}
 .problem-header .meta a:hover{background:#3a3a3a;color:#fff}
-.last-status{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border:1px solid #2a2a2a;font-size:11px;font-weight:600}
+.last-status{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border:1px solid #2a2a2a;font-size:11px;font-weight:600;text-decoration:none}
 .last-status a{color:inherit!important;text-decoration:none;background:none!important;padding:0!important;margin:0!important}
 .sec{margin:20px 0}
 .sec h2{font-size:16px;color:#fff;font-weight:500;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #333;letter-spacing:0}
@@ -70,9 +70,9 @@ require __DIR__ . '/inc/header.php';
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span class="pid-tag"><?=$pid?></span>
       <?php if ($acSub): ?>
-      <span class="last-status" style="color:#25ad40;border-color:#25ad40">AC</span>
+      <a href="submission.php?id=<?=$acSub['id']?>" title="查看 AC 提交记录" class="last-status" style="color:#25ad40;border-color:#25ad40">AC</a>
       <?php elseif ($lastSub): $st = $lastSub['status']; $color = $colorMap[$st] ?? '#999'; ?>
-      <span class="last-status" style="color:<?=$color?>;border-color:<?=$color?>"><?=$st?> <?=intval($lastSub['score'])?></span>
+      <a href="submission.php?id=<?=$lastSub['id']?>" title="查看提交记录" class="last-status" style="color:<?=$color?>;border-color:<?=$color?>"><?=$st?> <?=intval($lastSub['score'])?></a>
       <?php endif; ?>
       <h1 style="font-size:22px;color:#fff;font-weight:400;margin:0"><?=htmlspecialchars($problem['title'])?></h1>
     </div>
@@ -83,8 +83,9 @@ require __DIR__ . '/inc/header.php';
     </div>
   </div>
   <?php if ($hasData): ?>
-  <div style="margin:12px 0">
+  <div style="margin:12px 0;display:flex;gap:8px;flex-wrap:wrap">
     <?php $li = isset($_GET["list"]) ? "&list=".intval($_GET["list"]) : ""; ?><a href="submit.php?id=<?=$pid?><?=$li?>" style="display:inline-block;padding:8px 24px;background:#2a2a2a;color:#ccc;text-decoration:none;font-size:12px;letter-spacing:1px">提交</a>
+    <a href="stats.php?problem_id=<?=$pid?>" style="display:inline-block;padding:8px 24px;background:#1a3a5c;color:#5af;text-decoration:none;font-size:12px;letter-spacing:1px;border:1px solid #2a5a8c">📊 统计</a>
   </div>
   <?php endif; ?>
 

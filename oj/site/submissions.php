@@ -101,7 +101,7 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
   $sc = $r['status']; $color = $colorMap[$sc] ?? '#999'; $label = $labelMap[$sc] ?? $sc;
   $isPass = $sc === 'AC';
   $timeStr = $r["total_time"] >= 1 ? number_format($r['total_time'],3).'s' : number_format($r['total_time']*1000).'ms';
-  $memStr = number_format($r['peak_memory'],1).' MiB';
+  $memStr = number_format($r['peak_memory'],1).' MB';
 ?>
 <tr>
   <td><a href="submission.php?id=<?=$r['id']?>" class="status-cell" style="color:<?=$color?>">
