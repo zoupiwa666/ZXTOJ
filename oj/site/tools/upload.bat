@@ -4,11 +4,11 @@ color 0a
 setlocal enabledelayedexpansion
 
 echo ================================================
-echo    ZXT SUPER OJ - 数据包上传工具 (Windows)
+echo    ZXT SUPER OJ - Data Package Uploader (Windows)
 echo ================================================
 echo.
 
-rem ---- 解析参数: upload.bat [-s http://IP:端口] [文件路径] ----
+rem ---- Parse args: upload.bat [-s http://IP:PORT] [file path] ----
 set "SERVER="
 set "FILE="
 
@@ -28,36 +28,37 @@ goto parse
 
 if not defined SERVER (
   set "SERVER="
-  set /p "SERVER=请输入OJ服务器地址(直接回车用 http://localhost:18001): "
+  set /p "SERVER=Enter OJ server URL (Enter for http://localhost:18001): "
   if not defined SERVER set "SERVER=http://localhost:18001"
 )
 
 if defined FILE goto check
-echo 用法1: 把数据包(.zip/.tar.gz)拖到此窗口
-echo 用法2: upload.bat ^<文件路径^>
-echo 指定服务器: upload.bat -s http://IP:端口 ^<文件路径^>
+echo Usage 1: Drag the data package (.zip/.tar.gz) onto this window
+echo Usage 2: upload.bat ^<file path^>
+echo With server: upload.bat -s http://IP:PORT ^<file path^>
 echo.
-set /p "FILE=请输入数据包路径: "
+set /p "FILE=Enter data package path: "
 
 :check
 if not exist "%FILE%" (
-  echo [错误] 文件不存在: %FILE%
+  echo [ERROR] File not found: %FILE%
   echo.
   goto :eof
 )
 
-echo 服务器: %SERVER%
-echo [上传中] %FILE% ...
+echo Server: %SERVER%
+echo [Uploading] %FILE% ...
 curl -s -F "file=@%FILE%" "%SERVER%/api/tool_upload.php"
 echo.
 echo.
-echo [完成] 复制上方返回的 /tmp/... 路径，到 OJ 题目编辑页「路径导入」粘贴
+echo [DONE] Copy the returned /tmp/... path and paste it into
+echo        the "Import by Path" field on the OJ problem edit page.
 echo.
 pause >nul
 goto :eof
 
 :help
-echo 用法: upload.bat [-s http://IP:端口] [数据包路径]
-echo   示例: upload.bat -s http://192.168.1.100:18001 D:\data\P1000.zip
-echo   提示: 也可以直接把 .zip 文件拖到本窗口
+echo Usage: upload.bat [-s http://IP:PORT] [data package path]
+echo   Example: upload.bat -s http://192.168.1.100:18001 D:\data\P1000.zip
+echo   Tip: You can also drag the .zip file onto this window
 pause >nul
