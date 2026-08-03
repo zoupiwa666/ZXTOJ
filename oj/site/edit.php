@@ -240,7 +240,7 @@ async function calcMD5(file){
   const chunks=Math.ceil(file.size/2097152),spark=new SparkMD5.ArrayBuffer;
   let idx=0;const reader=new FileReader;
   reader.onload=e=>{spark.append(e.target.result);idx++;if(idx<chunks)loadNext();else resolve(spark.end())};
-  function loadNext(){pt.textContent='MD5 '+Math.round(idx/chunks*100)+'%'; reader.readAsArrayBuffer(file.slice(idx*2097152,(idx+1)*2097152))}
+  function loadNext(){const el=document.getElementById('progressText');if(el)el.textContent='MD5 '+Math.round(idx/chunks*100)+'%'; reader.readAsArrayBuffer(file.slice(idx*2097152,(idx+1)*2097152))}
   loadNext()
  })
 }
