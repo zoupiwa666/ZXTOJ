@@ -187,7 +187,7 @@ async function importServerPath(){
   else{st.innerHTML='<span style="color:#c00">'+d.message+'</span>';}
  }catch(e){st.innerHTML='<span style="color:#c00">失败</span>';}
 }
-const CHUNK_SIZE=5*1024*1024, MAX_CONCURRENT=3, UPLOAD_URL='http://156.239.236.66:1227';
+const CHUNK_SIZE=5*1024*1024, MAX_CONCURRENT=3, CHECK_URL='/api/check.php', CHUNK_URL='/api/chunk.php', MERGE_URL='/api/merge.php';
 async function directUpload(){
  const f=document.getElementById("pf").files[0];if(!f)return;
  const b=document.getElementById("directBtn");b.disabled=true;b.textContent="准备...";
@@ -197,7 +197,7 @@ async function directUpload(){
  b.textContent='计算MD5...'; const md5=await calcMD5(f).catch(e=>{st.innerHTML='<span style="color:#c00">MD5失败: '+e.message+'</span>';b.disabled=false;b.textContent='直传';throw e}); if(!md5)return;
  b.textContent="检查...";
  // 查询已有分片
- const ck=await fetch(UPLOAD_URL+'/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5,name:f.name})});
+ const ck=await fetch(CHECK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5,name:f.name})});
  const cj=await ck.json();
  if(cj.instant){pb.value=f.size;pt.textContent="秒传!";st.innerHTML='<span style="color:#0c0">秒传成功</span>';document.getElementById("serverPath").value=cj.path;importServerPath();b.disabled=false;b.textContent="直传";return}
  const exist=new Set(cj.exist.map(x=>parseInt(x)));
@@ -215,16 +215,19 @@ async function directUpload(){
   const fd=new FormData();fd.append('file',blob);fd.append('md5',md5);fd.append('index',i);
   for(let retry=0;retry<3;retry++){
    try{
-    const r=await fetch(UPLOAD_URL+'/chunk',{method:'POST',body:fd});
+    const r=await fetch(CHUNK_URL,{method:'POST',body:fd});
     if(r.ok){done++;uploaded+=blob.size;pb.value=uploaded;pt.textContent=Math.round(uploaded/f.size*100)+"% "+done+"/"+total;return}
    }catch(e){await new Promise(r=>setTimeout(r,1000*Math.pow(2,retry)))}
   }
   throw new Error("chunk "+i+" failed")
  }
  b.textContent="上传中...";
- await Promise.all(tasks.slice(0,MAX_CONCURRENT).map(i=>uploadChunk(i)));
+ // 并发 worker 池：传完所有分片（修复只传前3片的bug）
+ let ti=0;
+ async function worker(){while(ti<tasks.length){const i=tasks[ti++];await uploadChunk(i)}}
+ await Promise.all(Array.from({length:Math.min(MAX_CONCURRENT,tasks.length)},()=>worker()));
  // 合并
- const mr=await fetch(UPLOAD_URL+'/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5,name:f.name,total})});
+ const mr=await fetch(MERGE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5,name:f.name,total})});
  const mj=await mr.json();
  if(mj.path){document.getElementById("serverPath").value=mj.path;st.innerHTML='<span style="color:#0c0">完成 '+formatSize(mj.size)+'</span>';importServerPath()}
  else{st.innerHTML='<span style="color:#c00">合并失败</span>'}
