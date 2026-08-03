@@ -9,7 +9,7 @@ $me = currentUser();
 $fid = intval($_POST['friend_id'] ?? 0);
 $content = trim($_POST['content'] ?? '');
 if ($fid <= 0 || $content === '') { echo json_encode(['ok'=>false,'message'=>'消息不能为空']); exit; }
-if (strlen($content) > 1500) { echo json_encode(['ok'=>false,'message'=>'单条消息不能超过1.5KB']); exit; }
+if (strlen($content) > 3500) { echo json_encode(['ok'=>false,'message'=>'单条消息不能超过3.5KB']); exit; }
 $s = $pdo->prepare("SELECT 1 FROM chat_friends WHERE user_id=? AND friend_id=?");
 $s->execute([$me['id'], $fid]);
 if (!$s->fetch()) { echo json_encode(['ok'=>false,'message'=>'你们还不是好友']); exit; }
