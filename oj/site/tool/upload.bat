@@ -13,6 +13,7 @@ set "MODE=http"
 set "SERVER="
 set "USERHOST="
 set "DATADIR=/opt/oj-deploy/data"
+set "PORT=22"
 set "FILE="
 
 rem ---- Parse args: upload.bat [--scp] [-s URL|-u user@host|-d datadir] [file] ----
@@ -22,6 +23,7 @@ if /i "%~1"=="--scp" ( set "MODE=scp" & shift & goto parse )
 if /i "%~1"=="-s" ( if not "%~2"=="" set "SERVER=%~2" & shift & shift & goto parse )
 if /i "%~1"=="-u" ( if not "%~2"=="" set "USERHOST=%~2" & shift & shift & goto parse )
 if /i "%~1"=="-d" ( if not "%~2"=="" set "DATADIR=%~2" & shift & shift & goto parse )
+if /i "%~1"=="-p" ( if not "%~2"=="" set "PORT=%~2" & shift & shift & goto parse )
 if "%~1"=="-h" goto help
 set "FILE=%~1"
 shift
@@ -64,8 +66,9 @@ set /p "FILE=Enter data package path: "
 if not exist "%FILE%" ( echo [ERROR] File not found: %FILE% & pause >nul & goto :eof )
 for %%f in ("%FILE%") do set "FNAME=%%~nxf"
 echo Server data dir: %DATADIR%
-echo [SCP] Uploading %FNAME% to %USERHOST%:%DATADIR%/packages/ ...
-scp "%FILE%" "%USERHOST%:%DATADIR%/packages/"
+echo [SCP] Uploading %FNAME% to %USERHOST%:%DATADIR%/packages/ (port %PORT%) ...
+if not "%PORT%"=="22" ( set "SCPOPT=-P %PORT%" ) else ( set "SCPOPT=" )
+scp %SCPOPT% "%FILE%" "%USERHOST%:%DATADIR%/packages/"
 if errorlevel 1 ( echo [FAILED] scp failed - check user@host and password & pause >nul & goto :eof )
 echo.
 echo [DONE] In OJ edit page, use "Import by Path":
@@ -76,9 +79,9 @@ goto :eof
 :help
 echo Usage:
 echo   HTTP: upload.bat [-s http://IP:PORT] ^<file path^>
-echo   SCP:  upload.bat --scp -u user@host [-d datadir] ^<file path^>
+echo   SCP:  upload.bat --scp -u user@host [-p port] [-d datadir] ^<file path^>
 echo Examples:
 echo   upload.bat -s http://192.168.1.100:18001 D:\data\P1000.zip
-echo   upload.bat --scp -u root@192.168.1.100 D:\data\P1000.zip
+echo   upload.bat --scp -u root@192.168.1.100 -p 10001 D:\data\P1000.zip
 echo Tip: You can also drag the .zip file onto this window
 pause >nul
