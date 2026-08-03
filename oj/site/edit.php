@@ -211,17 +211,39 @@ async function directUpload(){
  for(let i=0;i<total;i++){if(!exist.has(i))tasks.push(i)}
  // 并发上传
  let active=0,done=0;
- async function uploadChunk(i){
-  const start=i*CHUNK_SIZE,end=Math.min(start+CHUNK_SIZE,f.size);
-  const blob=f.slice(start,end);
-  const fd=new FormData();fd.append('file',blob);fd.append('md5',md5);fd.append('index',i);
-  for(let retry=0;retry<3;retry++){
-   try{
-    const r=await fetch(CHUNK_URL,{method:'POST',body:fd});
-    if(r.ok){done++;uploaded+=blob.size;pb.value=uploaded;pt.textContent=Math.round(uploaded/f.size*100)+"% "+done+"/"+total;return}
-   }catch(e){await new Promise(r=>setTimeout(r,1000*Math.pow(2,retry)))}
-  }
-  throw new Error("chunk "+i+" failed")
+ function uploadChunk(i){
+  return new Promise((resolve,reject)=>{
+   const start=i*CHUNK_SIZE,end=Math.min(start+CHUNK_SIZE,f.size);
+   const blob=f.slice(start,end);
+   let attempts=0;
+   function attempt(){
+    attempts++;
+    const fd=new FormData();fd.append('file',blob);fd.append('md5',md5);fd.append('index',i);
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST',CHUNK_URL);
+    // 分片内实时进度（fetch 做不到，XHR 可以）
+    xhr.upload.onprogress=e=>{
+     if(e.lengthComputable){
+      pb.value=Math.min(uploaded+e.loaded,f.size);
+      pt.textContent=Math.round((uploaded+e.loaded)/f.size*100)+'% '+done+'/'+total;
+     }
+    };
+    xhr.onload=()=>{
+     if(xhr.status>=200&&xhr.status<300){
+      uploaded+=blob.size;done++;pb.value=uploaded;
+      pt.textContent=Math.round(uploaded/f.size*100)+'% '+done+'/'+total;
+      resolve();
+     }else if(attempts<3){setTimeout(attempt,1000*Math.pow(2,attempts-1));}
+     else reject(new Error('chunk '+i+' failed'));
+    };
+    xhr.onerror=()=>{
+     if(attempts<3){setTimeout(attempt,1000*Math.pow(2,attempts-1));}
+     else reject(new Error('chunk '+i+' failed'));
+    };
+    xhr.send(fd);
+   }
+   attempt();
+  });
  }
  b.textContent="上传中...";
  // 并发 worker 池：传完所有分片（修复只传前3片的bug）
@@ -239,6 +261,12 @@ async function calcMD5(file){
  return new Promise(resolve=>{
   const chunks=Math.ceil(file.size/2097152),spark=new SparkMD5.ArrayBuffer;
   let idx=0;const reader=new FileReader;
+  reader.onprogress=e=>{
+   if(e.lengthComputable){
+    const pb=document.getElementById('progressBar');
+    pb.value=idx*2097152+e.loaded;
+   }
+  };
   reader.onload=e=>{spark.append(e.target.result);idx++;if(idx<chunks)loadNext();else resolve(spark.end())};
   function loadNext(){const el=document.getElementById('progressText');if(el)el.textContent='MD5 '+Math.round(idx/chunks*100)+'%'; reader.readAsArrayBuffer(file.slice(idx*2097152,(idx+1)*2097152))}
   loadNext()
