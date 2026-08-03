@@ -1,5 +1,5 @@
 <?php
-// 聊天 - 发送消息（单条最多1.5KB，发送后数据库只留最新20条）
+// 聊天 - 发送消息（单条最多1.5KB，发送后数据库只留最新10条）
 require __DIR__.'/../inc/config.php';
 require __DIR__.'/../inc/auth.php';
 requireLogin();
@@ -15,11 +15,11 @@ $s->execute([$me['id'], $fid]);
 if (!$s->fetch()) { echo json_encode(['ok'=>false,'message'=>'你们还不是好友']); exit; }
 $pdo->prepare("INSERT INTO chat_messages (sender_id, receiver_id, content) VALUES (?,?,?)")
     ->execute([$me['id'], $fid, $content]);
-// 清理：只保留最新 20 条
+// 清理：只保留最新 10 条
 $stmt = $pdo->prepare(
   "SELECT id FROM chat_messages
    WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)
-   ORDER BY id DESC LIMIT 1000 OFFSET 20");
+   ORDER BY id DESC LIMIT 1000 OFFSET 10");
 $stmt->execute([$me['id'], $fid, $fid, $me['id']]);
 $oldIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 foreach ($oldIds as $oid) { $pdo->prepare("DELETE FROM chat_messages WHERE id=?")->execute([$oid]); }

@@ -20,7 +20,11 @@ $me = currentUser();
 .chat-main{flex:1;display:flex;flex-direction:column}
 .chat-head{padding:12px 16px;border-bottom:1px solid #222;color:#fff;font-size:14px;background:#1a1a1a}
 .chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
-.cmsg{max-width:70%;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+.cmsg{max-width:70%;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5}
+.cmsg .cm-body{display:block;white-space:pre-wrap;word-break:break-word}
+.cmsg .cm-body.cm-long{max-height:72px;overflow:hidden}
+.cmsg .cm-expand{display:block;margin-top:6px;background:none;border:none;color:#5af;font-size:11px;cursor:pointer;padding:0;font-family:inherit}
+.cmsg .cm-expand:hover{text-decoration:underline}
 .cmsg .cm-t{display:block;font-size:10px;color:#777;margin-top:4px}
 .cmsg.mine{align-self:flex-end;background:#1a3a5c;color:#ddd}
 .cmsg.theirs{align-self:flex-start;background:#2a2a2a;color:#ddd}
@@ -125,10 +129,20 @@ async function loadMessages(){
   const me = <?= $me['id'] ?>;
   const html = (d.messages||[]).map(m => {
     const mine = m.sender_id == me;
-    return `<div class="cmsg ${mine?'mine':'theirs'}">${escapeHtml(m.content)}<span class="cm-t">${fmtTime(m.created_at)}</span></div>`;
+    const isLong = (m.content||'').length > 100;
+    const body = isLong
+      ? `<span class="cm-body cm-long">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="expandMsg(this)">展开全部</button>`
+      : `<span class="cm-body">${escapeHtml(m.content)}</span>`;
+    return `<div class="cmsg ${mine?'mine':'theirs'}">${body}<span class="cm-t">${fmtTime(m.created_at)}</span></div>`;
   }).join('') || '<div class="chat-empty">还没有消息，说点什么吧</div>';
   box.innerHTML = html;
   box.scrollTop = box.scrollHeight;
+}
+
+function expandMsg(btn){
+  const body = btn.parentElement.querySelector('.cm-body');
+  body.classList.remove('cm-long');
+  btn.style.display = 'none';
 }
 
 function escapeHtml(s){
