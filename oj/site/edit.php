@@ -174,7 +174,7 @@ function uploadPackage(){
  };
  xhr.onerror=function(){pb.style.display='none';pt.style.display='none';st.innerHTML='<span style="color:#c00">上传中断</span> <button onclick="uploadPackage()" style="font-size:11px;background:#2a2a2a;color:#ccc;border:1px solid #333;cursor:pointer;padding:2px 10px">重试</button>';b.disabled=false;b.textContent='导入';};
  xhr.ontimeout=function(){pb.style.display='none';pt.style.display='none';st.innerHTML='<span style="color:#c00">上传超时</span> <button onclick="uploadPackage()" style="font-size:11px;background:#2a2a2a;color:#ccc;border:1px solid #333;cursor:pointer;padding:2px 10px">重试</button>';b.disabled=false;b.textContent='导入';};
- xhr.timeout=600000;xhr.open('POST','api/upload_package.php');xhr.send(fd);
+ xhr.timeout=3600000;xhr.open('POST','api/upload_package.php');xhr.send(fd);
 }
 async function importServerPath(){
  const path=document.getElementById('serverPath').value.trim();if(!path)return;
@@ -187,7 +187,7 @@ async function importServerPath(){
   else{st.innerHTML='<span style="color:#c00">'+d.message+'</span>';}
  }catch(e){st.innerHTML='<span style="color:#c00">失败</span>';}
 }
-const CHUNK_SIZE=5*1024*1024, MAX_CONCURRENT=3, CHECK_URL='/api/check.php', CHUNK_URL='/api/chunk.php', MERGE_URL='/api/merge.php';
+const CHUNK_SIZE=5*1024*1024, MAX_CONCURRENT=5, CHECK_URL='/api/check.php', CHUNK_URL='/api/chunk.php', MERGE_URL='/api/merge.php';
 async function directUpload(){
  const f=document.getElementById("pf").files[0];if(!f)return;
  const b=document.getElementById("directBtn");b.disabled=true;b.textContent="准备...";
