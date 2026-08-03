@@ -6,6 +6,19 @@
 set -e
 cd "$(dirname "$0")"
 
+# 参数解析
+FORCE_REBUILD=0
+for arg in "$@"; do
+  case "$arg" in
+    --rebuild) FORCE_REBUILD=1 ;;
+    -h|--help)
+      echo "用法: $0 [--rebuild]"
+      echo "  --rebuild   强制重新构建所有镜像（zxt-oj / zxt-judge / judge-sandbox）"
+      echo "  无参数       仅在镜像不存在时构建，启动已有镜像"
+      exit 0 ;;
+  esac
+done
+
 # 颜色
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 ok(){ echo -e "${GREEN}[OK]${NC} $1"; }
@@ -28,6 +41,9 @@ NETWORK=oj-net
 info "========================================"
 info " ZXT Super OJ 启动程序"
 info " OJ端口=$OJ_PORT 评测端口=$JUDGE_PORT CPU=$JUDGE_CPU_LIMIT 内存=$JUDGE_MEM_LIMIT"
+if [ "$FORCE_REBUILD" = "1" ]; then
+  info " 模式: 强制重建镜像 (--rebuild)"
+fi
 info "========================================"
 
 # 1. 检查 Docker
@@ -44,7 +60,7 @@ info "创建容器网络 $NETWORK..."
 docker network create $NETWORK 2>/dev/null || ok "网络已存在"
 
 # 3. 构建沙箱镜像
-if ! docker images judge-sandbox:latest --format "{{.ID}}" | grep -q .; then
+if [ "$FORCE_REBUILD" = "1" ] || ! docker images judge-sandbox:latest --format "{{.ID}}" | grep -q .; then
   info "构建沙箱镜像 judge-sandbox..."
   docker build -t judge-sandbox:latest ./judge/engine || { err "沙箱镜像构建失败"; exit 1; }
 else
@@ -52,7 +68,7 @@ else
 fi
 
 # 4. 构建评测机镜像
-if ! docker images zxt-judge:latest --format "{{.ID}}" | grep -q .; then
+if [ "$FORCE_REBUILD" = "1" ] || ! docker images zxt-judge:latest --format "{{.ID}}" | grep -q .; then
   info "构建评测机镜像 zxt-judge..."
   docker build -t zxt-judge:latest ./judge || { err "评测机构建失败"; exit 1; }
 else
@@ -60,7 +76,7 @@ else
 fi
 
 # 5. 构建 OJ 镜像
-if ! docker images zxt-oj:latest --format "{{.ID}}" | grep -q .; then
+if [ "$FORCE_REBUILD" = "1" ] || ! docker images zxt-oj:latest --format "{{.ID}}" | grep -q .; then
   info "构建 OJ 镜像 zxt-oj..."
   docker build -t zxt-oj:latest ./oj || { err "OJ 构建失败"; exit 1; }
 else
