@@ -50,7 +50,7 @@ fi
 echo "Server: $SERVER"
 echo "[Uploading] $FILE ..."
 
-RESP=$(curl -s --progress-bar -F "file=@$FILE" "$SERVER/api/tool_upload.php")
+RESP=$(curl --progress-bar -F "file=@$FILE" "$SERVER/api/tool_upload.php")
 echo "$RESP"
 
 case "$RESP" in
