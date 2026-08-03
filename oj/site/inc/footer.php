@@ -1,3 +1,4 @@
+<script src="assets/spark-md5.min.js"></script>
 <script src="assets/highlight.min.js"></script>
 <script src="assets/highlight-line-numbers.min.js"></script>
 <script>document.querySelectorAll('pre code').forEach(el=>{hljs.highlightElement(el);hljs.lineNumbersBlock(el.parentElement)})</script>
