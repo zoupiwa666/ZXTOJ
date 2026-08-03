@@ -1,0 +1,155 @@
+<?php
+$pageTitle = '聊天 - Zxt Super OJ';
+require __DIR__.'/inc/header.php';
+requireLogin();
+require_once __DIR__.'/inc/chat_tables.php';
+$me = currentUser();
+?>
+<style>
+.chat-wrap{display:flex;gap:0;min-height:520px;border:1px solid #222;background:#141414}
+.chat-side{width:260px;border-right:1px solid #222;display:flex;flex-direction:column;background:#181818}
+.chat-side .search-box{padding:10px;border-bottom:1px solid #222}
+.chat-side .search-res{max-height:140px;overflow:auto;border-bottom:1px solid #222;display:none}
+.chat-side .search-res .sr{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:12px;color:#ccc;border-bottom:1px solid #1c1c1c}
+.chat-side .search-res .sr:hover{background:#222}
+.chat-friends{flex:1;overflow-y:auto}
+.chat-friend{padding:10px 12px;border-bottom:1px solid #1c1c1c;cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.chat-friend:hover,.chat-friend.active{background:#222}
+.chat-friend .cf-name{color:#fff;font-size:13px}
+.chat-friend .cf-prev{color:#777;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.chat-main{flex:1;display:flex;flex-direction:column}
+.chat-head{padding:12px 16px;border-bottom:1px solid #222;color:#fff;font-size:14px;background:#1a1a1a}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.cmsg{max-width:70%;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+.cmsg .cm-t{display:block;font-size:10px;color:#777;margin-top:4px}
+.cmsg.mine{align-self:flex-end;background:#1a3a5c;color:#ddd}
+.cmsg.theirs{align-self:flex-start;background:#2a2a2a;color:#ddd}
+.chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid #222;background:#181818}
+.chat-input textarea{flex:1;height:64px;resize:none}
+.chat-empty{display:flex;align-items:center;justify-content:center;flex:1;color:#555;font-size:13px}
+.hint{font-size:11px;color:#666;padding:8px 12px;border-bottom:1px solid #1c1c1c}
+</style>
+
+<div class="chat-wrap">
+  <!-- 左侧：搜索 + 好友列表 -->
+  <div class="chat-side">
+    <div class="search-box">
+      <input id="searchKw" placeholder="搜索用户名..." onkeydown="if(event.key==='Enter')searchUsers()">
+      <button class="btn btn-sm" style="width:100%;margin-top:6px" onclick="searchUsers()">搜索</button>
+    </div>
+    <div class="search-res" id="searchRes"></div>
+    <div class="hint">我的好友</div>
+    <div class="chat-friends" id="friendList"></div>
+  </div>
+
+  <!-- 右侧：聊天窗口 -->
+  <div class="chat-main">
+    <div class="chat-head" id="chatHead">选择左侧好友开始聊天</div>
+    <div class="chat-msgs" id="chatMsgs"><div class="chat-empty">👈 选择左侧好友开始聊天</div></div>
+    <div class="chat-input" id="chatInputBox" style="display:none">
+      <textarea id="msgInput" placeholder="输入消息（最多1.5KB），Enter发送，Shift+Enter换行" onkeydown="onInputKey(event)"></textarea>
+      <button class="btn" style="align-self:stretch" onclick="sendMsg()">发送</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentFriend = null;
+let msgTimer = null;
+let lastFriendList = '';
+
+function fmtTime(t){
+  if(!t) return '';
+  const d = new Date(t.replace(' ','T') + (t.includes('Z')?'':'Z'));
+  if(isNaN(d)) return t;
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const hh = String(d.getHours()).padStart(2,'0'), mm = String(d.getMinutes()).padStart(2,'0');
+  return (sameDay?'':(d.getMonth()+1)+'/'+d.getDate()+' ') + hh+':'+mm;
+}
+
+async function api(url, data){
+  const opt = {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}};
+  if(data) opt.body = new URLSearchParams(data);
+  const r = await fetch(url, opt);
+  return r.json();
+}
+
+async function searchUsers(){
+  const kw = document.getElementById('searchKw').value.trim();
+  if(!kw) return;
+  const d = await api('api/chat_search.php', {kw});
+  const box = document.getElementById('searchRes');
+  box.style.display = 'block';
+  if(!d.users || d.users.length===0){ box.innerHTML = '<div class="sr" style="color:#777">未找到用户</div>'; return; }
+  box.innerHTML = d.users.map(u =>
+    `<div class="sr"><span>${u.username} <span style="color:#666">(${u.role})</span></span>` +
+    (u.is_friend ? '<span style="color:#0c0;font-size:11px">✓好友</span>'
+                : `<button class="btn btn-sm" onclick="addFriend(${u.id}, this)">添加</button></div>`)
+  ).join('');
+}
+
+async function addFriend(id, btn){
+  btn.disabled = true;
+  const d = await api('api/chat_add.php', {friend_id:id});
+  if(d.ok){ btn.innerHTML = '✓已添加'; loadFriends(); }
+  else { btn.disabled = false; btn.innerHTML = d.message||'失败'; }
+}
+
+async function loadFriends(){
+  const d = await api('api/chat_friends.php', {});
+  const list = document.getElementById('friendList');
+  const html = (d.friends||[]).map(f => {
+    const prev = f.last_msg ? (f.last_msg.length>30 ? f.last_msg.slice(0,30)+'…' : f.last_msg) : '暂无消息';
+    return `<div class="chat-friend${currentFriend==f.id?' active':''}" onclick="openChat(${f.id},'${f.username}')">
+      <span class="cf-name">${f.username}</span><span class="cf-prev">${prev}</span></div>`;
+  }).join('') || '<div style="padding:16px;color:#555;font-size:12px">还没有好友，搜索用户名添加吧</div>';
+  if(html !== lastFriendList){ list.innerHTML = html; lastFriendList = html; }
+}
+
+async function openChat(fid, name){
+  currentFriend = fid;
+  document.getElementById('chatHead').textContent = '与 ' + name + ' 聊天中';
+  document.getElementById('chatInputBox').style.display = 'flex';
+  loadFriends();
+  await loadMessages();
+  clearInterval(msgTimer);
+  msgTimer = setInterval(loadMessages, 3000);
+  document.getElementById('msgInput').focus();
+}
+
+async function loadMessages(){
+  if(currentFriend === null) return;
+  const d = await api('api/chat_messages.php?friend_id='+currentFriend, {});
+  const box = document.getElementById('chatMsgs');
+  const me = <?= $me['id'] ?>;
+  const html = (d.messages||[]).map(m => {
+    const mine = m.sender_id == me;
+    return `<div class="cmsg ${mine?'mine':'theirs'}">${escapeHtml(m.content)}<span class="cm-t">${fmtTime(m.created_at)}</span></div>`;
+  }).join('') || '<div class="chat-empty">还没有消息，说点什么吧</div>';
+  box.innerHTML = html;
+  box.scrollTop = box.scrollHeight;
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function onInputKey(e){
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); }
+}
+
+async function sendMsg(){
+  if(currentFriend === null) return;
+  const inp = document.getElementById('msgInput');
+  const content = inp.value.trim();
+  if(!content) return;
+  const d = await api('api/chat_send.php', {friend_id:currentFriend, content});
+  if(d.ok){ inp.value=''; await loadMessages(); loadFriends(); }
+  else alert(d.message || '发送失败');
+}
+
+loadFriends();
+setInterval(loadFriends, 5000);
+</script>
+<?php require __DIR__.'/inc/footer.php'; ?>

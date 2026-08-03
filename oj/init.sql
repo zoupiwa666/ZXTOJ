@@ -151,3 +151,23 @@ INSERT INTO problem_testcases (problem_id, sort_order, score, file_path) VALUES
 ('P1000', 3, 20.0, '/data/problems/P1000/3'),
 ('P1000', 4, 20.0, '/data/problems/P1000/4'),
 ('P1000', 5, 20.0, '/data/problems/P1000/5');
+
+-- 聊天功能
+CREATE TABLE IF NOT EXISTS chat_friends (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    friend_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_pair (user_id, friend_id),
+    KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_pair (sender_id, receiver_id),
+    KEY idx_recv (receiver_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

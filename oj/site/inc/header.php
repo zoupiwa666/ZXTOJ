@@ -77,6 +77,7 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
   <div class="btns">
     <?php if ($currentUser): ?>
       <span class="user"><a href="user.php?name=<?= urlencode($currentUser["username"]) ?>" style="color:#fff;text-decoration:none"><?= htmlspecialchars($currentUser["username"]) ?></a></span>
+      <a href="chat.php">聊天</a>
       <a href="logout.php">退出</a>
     <?php else: ?>
       <a href="login.php">登录</a>
