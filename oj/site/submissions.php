@@ -87,8 +87,18 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
 </form>
 </div>
 
+<?php if (isAdmin()): ?>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+  <span style="font-size:12px;color:#888">批量操作:</span>
+  <button class="btn btn-sm" onclick="batchAction('rejudge')">批量重测</button>
+  <button class="btn btn-sm btn-danger" onclick="batchAction('delete')">批量删除</button>
+  <span id="batchMsg" style="font-size:12px;color:#999"></span>
+</div>
+<?php endif; ?>
+
 <table class="data-table">
 <thead><tr>
+<?php if (isAdmin()): ?><th style="width:30px"><input type="checkbox" id="checkAll" onclick="toggleAll(this)" style="width:auto"></th><?php endif; ?>
 <th>状态</th><th>题目</th><th>递交者</th>
 <th><a href="?<?=http_build_query(array_merge($_GET,['sort'=>'time','dir'=>((($_GET['sort']??'')==='time' && ($_GET['dir']??'desc')==='asc')?'desc':'asc')]))?>" style="color:#888;text-decoration:none">用时⇅</a></th>
 <th><a href="?<?=http_build_query(array_merge($_GET,['sort'=>'memory','dir'=>((($_GET['sort']??'')==='memory' && ($_GET['dir']??'desc')==='asc')?'desc':'asc')]))?>" style="color:#888;text-decoration:none">内存⇅</a></th>
@@ -104,6 +114,7 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
   $memStr = number_format($r['peak_memory'],1).' MB';
 ?>
 <tr>
+  <?php if (isAdmin()): ?><td style="text-align:center"><input type="checkbox" class="row-check" value="<?=$r['id']?>" style="width:auto"></td><?php endif; ?>
   <td><a href="submission.php?id=<?=$r['id']?>" class="status-cell" style="color:<?=$color?>">
     <span class="status-score"><?=intval($r['score'])?></span> <?=$label?>
   </a></td>
@@ -115,10 +126,34 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
   <td class="submitted"><?=date('Y-m-d H:i',strtotime($r['created_at']))?></td>
 </tr>
 <?php endforeach; if(!$rows): ?>
-<tr><td colspan="7" style="text-align:center;color:#666;padding:60px">暂无提交记录</td></tr>
+<tr><td colspan="<?= isAdmin() ? 8 : 7 ?>" style="text-align:center;color:#666;padding:60px">暂无提交记录</td></tr>
 <?php endif; ?>
 </tbody>
 </table>
+
+<?php if (isAdmin()): ?>
+<script>
+function toggleAll(cb){ document.querySelectorAll('.row-check').forEach(x=>x.checked=cb.checked); }
+async function batchAction(action){
+  const boxes = [...document.querySelectorAll('.row-check:checked')];
+  if(!boxes.length){ alert('请先勾选要处理的提交记录'); return; }
+  const ids = boxes.map(x=>x.value);
+  const isDel = action==='delete';
+  if(!confirm('确定对 '+ids.length+' 条提交'+(isDel?'执行删除？此操作不可恢复！':'执行重测？将覆盖当前结果。'))) return;
+  const msg = document.getElementById('batchMsg');
+  msg.textContent = '处理中，请稍候...';
+  const fd = new FormData();
+  fd.append('action', action);
+  fd.append('ids', JSON.stringify(ids));
+  try{
+    const r = await fetch('api/batch_submissions.php', {method:'POST', body:fd});
+    const d = await r.json();
+    if(d.ok){ msg.textContent = d.message; setTimeout(()=>location.reload(), 1200); }
+    else { msg.textContent = d.message || '操作失败'; }
+  }catch(e){ msg.textContent = '操作失败: '+e.message; }
+}
+</script>
+<?php endif; ?>
 
 <?php if($totalPages > 1): ?>
 <div class="pager">
