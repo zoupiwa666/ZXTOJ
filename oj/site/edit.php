@@ -108,7 +108,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <!-- 导入 -->
 <div class="card"><h3>导入数据包 (已有 <span id="tcCount"><?=$tcCount?></span> 个测试点)</h3>
 <label class="file-zone" id="dz"><div style="font-size:20px">+</div><div style="font-size:12px">拖拽或点击上传 .zip / .tar.gz</div><div style="font-size:11px;color:#999" id="fn">未选择</div><input type="file" name="package" accept=".zip,.tar.gz,.tgz,.tar" id="pf"></label>
-<button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button> <button class="btn" style="margin-top:12px;background:#1a3a5c;color:#5af" onclick="directUpload()" id="directBtn">直传</button>
+<button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button> <button class="btn" style="margin-top:12px;background:#1a3a5c;color:#5af" onclick="directUpload()" id="directBtn">直传</button> <a class="btn" style="margin-top:12px;background:#2a5a3c;color:#6c6" href="api/download_package.php?problem_id=<?= urlencode($pid) ?>">下载数据包</a>
 <div style="margin-top:12px;display:flex;gap:8px">
   <input id="serverPath" placeholder="服务器路径或下载链接: /tmp/a.zip 或 https://...zip" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')importServerPath()">
   <button class="btn btn-sm" onclick="importServerPath()">路径导入</button>
