@@ -12,6 +12,9 @@ if (!is_dir($dir)) { http_response_code(404); die('题目数据不存在'); }
 $files = glob("$dir/*");
 if (!$files) { http_response_code(404); die('题目数据为空'); }
 
+// 确保下载临时目录存在
+@mkdir('/tmp/oj_packages', 0777, true);
+
 // 清理该题目的旧数据包，避免堆积
 foreach (glob("/tmp/oj_packages/{$pid}_data_*.zip") as $old) @unlink($old);
 
