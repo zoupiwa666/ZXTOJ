@@ -60,6 +60,7 @@ $me = currentUser();
 <script>
 let currentFriend = null;
 let msgTimer = null;
+let expandedIds = new Set(); // 已展开的消息id（轮询刷新不丢失）
 let lastFriendList = '';
 
 function fmtTime(t){
@@ -130,19 +131,33 @@ async function loadMessages(){
   const html = (d.messages||[]).map(m => {
     const mine = m.sender_id == me;
     const isLong = (m.content||'').length > 100;
-    const body = isLong
-      ? `<span class="cm-body cm-long">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="expandMsg(this)">展开全部</button>`
-      : `<span class="cm-body">${escapeHtml(m.content)}</span>`;
+    const expanded = expandedIds.has(m.id);
+    let body;
+    if(isLong && !expanded){
+      body = `<span class="cm-body cm-long">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="expandMsg(${m.id}, this)">展开全部</button>`;
+    } else if(isLong && expanded){
+      body = `<span class="cm-body">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="collapseMsg(${m.id}, this)">收起</button>`;
+    } else {
+      body = `<span class="cm-body">${escapeHtml(m.content)}</span>`;
+    }
     return `<div class="cmsg ${mine?'mine':'theirs'}">${body}<span class="cm-t">${fmtTime(m.created_at)}</span></div>`;
   }).join('') || '<div class="chat-empty">还没有消息，说点什么吧</div>';
   box.innerHTML = html;
   box.scrollTop = box.scrollHeight;
 }
 
-function expandMsg(btn){
-  const body = btn.parentElement.querySelector('.cm-body');
-  body.classList.remove('cm-long');
-  btn.style.display = 'none';
+function expandMsg(id, btn){
+  expandedIds.add(id);
+  btn.parentElement.querySelector('.cm-body').classList.remove('cm-long');
+  btn.textContent = '收起';
+  btn.setAttribute('onclick', `collapseMsg(${id}, this)`);
+}
+
+function collapseMsg(id, btn){
+  expandedIds.delete(id);
+  btn.parentElement.querySelector('.cm-body').classList.add('cm-long');
+  btn.textContent = '展开全部';
+  btn.setAttribute('onclick', `expandMsg(${id}, this)`);
 }
 
 function escapeHtml(s){
