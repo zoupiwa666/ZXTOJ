@@ -84,8 +84,8 @@ else
 fi
 
 # 6. 准备数据目录和配置
-mkdir -p data/problems oj-mysql
-chmod 777 data oj-mysql 2>/dev/null
+mkdir -p data/problems data/packages oj-mysql
+chmod 777 data data/packages oj-mysql 2>/dev/null
 # 交互式配置环境变量（首次启动询问）
 if [ ! -f .env ]; then
   echo ""
