@@ -7,6 +7,7 @@ set -e
 cd "$(dirname "$0")"
 
 # 参数解析
+OJ_UPLOAD_PW=""
 FORCE_REBUILD=0
 for arg in "$@"; do
   case "$arg" in
@@ -188,6 +189,29 @@ else
   ok "P1000 测试数据已存在，跳过"
 fi
 
+# 创建专用上传用户 ojupload（用于 scp 上传数据包，任何部署机器都可用）
+if ! id ojupload >/dev/null 2>&1; then
+  info "创建上传用户 ojupload..."
+  useradd -m -s /bin/bash ojupload 2>/dev/null || { err "创建用户失败（可能需要 root 权限）"; }
+  OJ_UPLOAD_PW="OjUp$(date +%s | tail -c 5)@$(date +%Y)"
+  echo "ojupload:$OJ_UPLOAD_PW" | chpasswd 2>/dev/null
+  echo "$OJ_UPLOAD_PW" > data/.ojupload_pw
+  chmod 600 data/.ojupload_pw
+  ok "已创建上传用户 ojupload，密码: $OJ_UPLOAD_PW"
+else
+  if [ -f data/.ojupload_pw ]; then
+    OJ_UPLOAD_PW=$(cat data/.ojupload_pw)
+    ok "上传用户 ojupload 已存在，密码: $OJ_UPLOAD_PW"
+  else
+    ok "上传用户 ojupload 已存在（密码未知，可执行 passwd ojupload 修改）"
+  fi
+fi
+# packages 目录授权 ojupload（scp 目标）
+mkdir -p data/packages
+chown -R ojupload:ojupload data/packages 2>/dev/null
+chmod 775 data/packages 2>/dev/null
+ok "数据包暂存目录 data/packages 已就绪（scp 目标）"
+
 # 7. 启动评测机容器
 info "启动评测机容器..."
 docker rm -f zxt-judge 2>/dev/null || true
@@ -265,5 +289,6 @@ echo -e "${GREEN}========================================${NC}"
 echo "  OJ 系统:   http://服务器IP:$OJ_PORT"
 echo "  评测机:    http://服务器IP:$JUDGE_PORT"
 echo "  初始账号:  admin / admin123"
+echo "  上传账号:  ojupload / ${OJ_UPLOAD_PW:-<见上方提示>}  (scp 到服务器 data/packages/)" 
 echo "  停止:      docker rm -f zxt-oj zxt-judge"
 echo ""

@@ -112,6 +112,21 @@ P1000.zip
 └── ...
 ```
 
+### 上传用户（scp 专用）
+
+每次部署时 `start.sh` 会自动创建 **`ojupload`** 上传用户，并在启动信息里显示密码（保存在 `data/.ojupload_pw`）。用它通过 scp 传数据包最稳定（不受 HTTP 限制）：
+
+```bash
+# Linux
+./upload.sh --scp -u ojupload@服务器IP ./P1000.zip
+# Windows
+upload.bat --scp -u ojupload@服务器IP D:\data\P1000.zip
+```
+
+上传后到 OJ 编辑页「路径导入」填 `/data/packages/文件名.zip`。
+
+> 该用户只对 `data/packages/` 有写权限，仅用于上传数据包；建议部署后自行修改密码（`passwd ojupload`）。
+
 ### 上传工具下载
 ```
 http://服务器IP:OJ端口/tool/upload.bat   # Windows
