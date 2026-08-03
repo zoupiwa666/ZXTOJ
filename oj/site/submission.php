@@ -76,6 +76,9 @@ require __DIR__ . '/inc/header.php';
 
 <div class="sub-header">
   <h1>提交 #<?=$id?></h1>
+  <?php if (isAdmin()): ?>
+  <button class="btn btn-sm" style="margin-left:auto" onclick="rejudge(<?=$id?>, this)">重测</button>
+  <?php endif; ?>
   <div class="meta-grid">
     <span class="label">用户</span><span class="val"><?= userBadge($sub['username']) ?></span>
     <span class="label">题目</span><span class="val"><a href="problem.php?id=<?=$sub['problem_id']?>" style="color:#ccc;text-decoration:none"><?=$sub['problem_id']?></a></span>
@@ -96,7 +99,6 @@ require __DIR__ . '/inc/header.php';
   <pre style="margin:0;border:1px solid #222;border-top:none;background:#111"><code class="language-<?=str_replace(["python3","cpp17","cpp20","cpp14"],["python","cpp","cpp","cpp"],$sub["language"])?>"><?=htmlspecialchars($sub["code"])?></code></pre>
 </div>
 
-<?php if ($details): ?>
 <div id="liveScore" style="font-size:16px;color:#fff;margin-bottom:8px"></div>
 <h2 style="font-size:13px;color:#fff;font-weight:400;margin-bottom:10px;letter-spacing:1px">测试详情 (<?=count($details)?>)</h2>
 <div class="tc-list">
@@ -135,11 +137,16 @@ require __DIR__ . '/inc/header.php';
 </div>
 <?php endforeach ?>
 </div>
-<?php endif ?>
+<?php if (!$details): ?>
+<div id="tcLoading" style="padding:20px;color:#666;font-size:12px">评测中，请稍候...</div>
+<?php endif; ?>
+</div>
 
 <script>
 const sid = <?=$id?>;
-let shownCases = 0;
+let shownCases = <?= count($details) ?>;
+let lastStatus = '';
+let reloaded = false;
 async function pollStatus(){
  try{
   const r = await fetch('api/submission_status.php?id='+sid);
@@ -150,19 +157,38 @@ async function pollStatus(){
    let list = [];
    try{ list = JSON.parse(d.details).filter(x=>x); }catch(e){}
    for(const x of list){
-    if(x.test_case_index >= shownCases){
+    if(x.test_case_index !== undefined && x.test_case_index >= shownCases){
      addCaseRow(x);
      shownCases = x.test_case_index + 1;
     }
    }
+   const loading = document.getElementById('tcLoading');
+   if(loading && list.length > 0) loading.remove();
   }
-  if(d.status === 'judging' || d.status === 'waiting'){
-   setTimeout(pollStatus, 1500);
-  } else if(d.status !== undefined && shownCases < (d.total_tests||0)){
+  const cur = d.status || '';
+  const isFinal = (cur !== 'judging' && cur !== 'waiting' && cur !== '');
+  // 评测完成：自动刷新展示完整详情
+  if(lastStatus && (lastStatus==='judging'||lastStatus==='waiting') && isFinal && !reloaded){
+   reloaded = true;
+   setTimeout(()=>location.reload(), 500);
+   return;
+  }
+  lastStatus = cur;
+  if(!isFinal || (d.total_tests && shownCases < d.total_tests)){
    setTimeout(pollStatus, 1500);
   }
-  // 评测完成：停止轮询，不再刷新
  }catch(e){ setTimeout(pollStatus, 2000); }
+}
+async function rejudge(sid, btn){
+ if(!confirm('确定重新评测这份提交？将覆盖当前结果。')) return;
+ btn.disabled = true; btn.textContent = '重测中...';
+ const fd = new FormData(); fd.append('submission_id', sid);
+ try{
+  const r = await fetch('api/rejudge.php', {method:'POST', body: fd});
+  const d = await r.json();
+  if(d.ok){ btn.textContent = '完成，刷新中...'; setTimeout(()=>location.reload(), 800); }
+  else { alert(d.message || '重测失败'); btn.disabled=false; btn.textContent='重测'; }
+ }catch(e){ alert('重测失败: '+e.message); btn.disabled=false; btn.textContent='重测'; }
 }
 function addCaseRow(x){
  if(document.getElementById('lc-'+x.test_case_index)) return;

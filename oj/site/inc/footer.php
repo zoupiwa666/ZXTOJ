@@ -4,7 +4,9 @@
 <script>document.querySelectorAll('pre code').forEach(el=>{hljs.highlightElement(el);hljs.lineNumbersBlock(el.parentElement)})</script>
 <script>
 function copyCode(el){
- const pre=el.closest('div, .sample-box, .code-block').querySelector('pre');
+ const c=el.closest('div, .sample-box, .code-block');
+ let pre=c?c.querySelector('pre'):null;
+ if(!pre&&el.parentElement&&el.parentElement.parentElement)pre=el.parentElement.parentElement.querySelector('pre');
  if(!pre)return;
  const text=pre.textContent;
  if(navigator.clipboard&&window.isSecureContext){
