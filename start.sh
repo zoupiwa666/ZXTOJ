@@ -217,7 +217,8 @@ fi
 mkdir -p data/packages
 chown -R ojupload:ojupload data/packages 2>/dev/null
 chmod 775 data/packages 2>/dev/null
-ok "数据包暂存目录 data/packages 已就绪（scp 目标）"
+ok "数据包暂存目录已就绪: $(pwd)/data/packages"
+ok "scp 目标: 用户@主机:$(pwd)/data/packages/  → 容器内 /data/packages/"
 
 # 7. 启动评测机容器
 info "启动评测机容器..."
@@ -296,6 +297,7 @@ echo -e "${GREEN}========================================${NC}"
 echo "  OJ 系统:   http://服务器IP:$OJ_PORT"
 echo "  评测机:    http://服务器IP:$JUDGE_PORT"
 echo "  初始账号:  admin / admin123"
-echo "  上传账号:  ojupload / ${OJ_UPLOAD_PW:-<见上方提示>}  (scp 到服务器 data/packages/)" 
+echo "  上传账号:  ojupload / ${OJ_UPLOAD_PW:-<见上方提示>}"
+echo "  scp 上传:  scp 数据包.zip ojupload@IP:$(pwd)/data/packages/" 
 echo "  停止:      docker rm -f zxt-oj zxt-judge"
 echo ""

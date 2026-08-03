@@ -61,6 +61,9 @@ if [ "$MODE" = "scp" ]; then
   fi
   if [ -z "$USERHOST" ]; then echo "[ERROR] user@host required for scp mode" >&2; exit 1; fi
   echo "Server data dir: $DATADIR"
+  if [ "$DATADIR" = "/opt/oj-deploy/data" ]; then
+    echo "  (hint: if your deployment is elsewhere, use -d <部署目录>/data, see start.sh output)"
+  fi
   SCP_OPT=""
   [ "$PORT" != "22" ] && SCP_OPT="-P $PORT"
   echo "[SCP] Uploading $(basename "$FILE") to ${USERHOST}:${DATADIR}/packages/ (port $PORT) ..."
