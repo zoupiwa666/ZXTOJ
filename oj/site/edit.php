@@ -108,7 +108,9 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <!-- 导入 -->
 <div class="card"><h3>导入数据包 (已有 <span id="tcCount"><?=$tcCount?></span> 个测试点)</h3>
 <label class="file-zone" id="dz"><div style="font-size:20px">+</div><div style="font-size:12px">拖拽或点击上传 .zip / .tar.gz</div><div style="font-size:11px;color:#999" id="fn">未选择</div><input type="file" name="package" accept=".zip,.tar.gz,.tgz,.tar" id="pf"></label>
-<button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button> <button class="btn" style="margin-top:12px;background:#1a3a5c;color:#5af" onclick="directUpload()" id="directBtn">直传</button> <a class="btn" style="margin-top:12px;background:#2a5a3c;color:#6c6" href="api/download_package.php?problem_id=<?= urlencode($pid) ?>">下载数据包</a>
+<button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button> <button class="btn" style="margin-top:12px;background:#1a3a5c;color:#5af" onclick="directUpload()" id="directBtn">直传</button> <button class="btn" style="margin-top:12px;background:#2a5a3c;color:#6c6" onclick="downloadPackage()" id="dlBtn">下载数据包</button>
+<div id="dlStatus" style="margin-top:6px;font-size:12px;color:#999"></div>
+<progress id="dlProgress" value="0" max="100" style="width:100%;height:4px;display:none;margin-top:6px;accent-color:#6c6;border:none;background:#222"></progress>
 <div style="margin-top:12px;display:flex;gap:8px">
   <input id="serverPath" placeholder="服务器路径或下载链接: /tmp/a.zip 或 https://...zip" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')importServerPath()">
   <button class="btn btn-sm" onclick="importServerPath()">路径导入</button>
@@ -243,5 +245,34 @@ async function calcMD5(file){
  })
 }
 function formatSize(b){return b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB'}
+
+async function downloadPackage(){
+ const btn=document.getElementById('dlBtn'),st=document.getElementById('dlStatus'),pb=document.getElementById('dlProgress');
+ btn.disabled=true;btn.textContent='打包中...';
+ st.textContent='正在生成数据包...';pb.style.display='block';pb.value=0;
+ try{
+  const resp=await fetch('api/download_package.php?problem_id=<?= urlencode($pid) ?>');
+  if(!resp.ok){throw new Error('HTTP '+resp.status)}
+  const total=parseInt(resp.headers.get('Content-Length')||'0');
+  const reader=resp.body.getReader();const chunks=[];let received=0;
+  btn.textContent='下载中...';
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   chunks.push(value);received+=value.length;
+   const pct=total?Math.round(received/total*100):0;
+   pb.value=pct;
+   st.textContent='下载中 '+formatSize(received)+(total?' / '+formatSize(total)+' ('+pct+'%)':'');
+  }
+  const blob=new Blob(chunks);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='<?= urlencode($pid) ?>_data.zip';
+  document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(url);
+  st.textContent='下载完成 ('+formatSize(received)+')';
+ }catch(e){st.textContent='下载失败: '+e.message}
+ btn.disabled=false;btn.textContent='下载数据包';
+ setTimeout(()=>{pb.style.display='none';if(st.textContent.includes('失败'))st.textContent='';},4000);
+}
 </script>
 <?php require __DIR__.'/inc/footer.php'; ?>
