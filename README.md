@@ -8,7 +8,6 @@
 - 💬 **聊天**：按用户名搜索、添加好友、实时消息（Markdown + KaTeX 渲染）
 - 👤 **头像**：全站用户名旁显示头像（上传自动生成 50×50 缩略图）
 - 📦 **数据包上传**：网页标准上传（500MB+）、分片直传（断点续传）、路径导入
-- 🛠️ **上传工具**：`/tool/upload.bat`（Windows）与 `/tool/upload.sh`（Linux）可直接下载
 - 🚀 **开箱即用**：首次部署自动为示例题 P1000 生成测试数据
 - ⚡ **国内加速**：apt / pip 均使用阿里云镜像
 
@@ -118,21 +117,14 @@ P1000.zip
 
 ```bash
 # Linux
-./upload.sh --scp -u ojupload@服务器IP ./P1000.zip
+scp -P 端口(默认22) ./P1000.zip ojupload@服务器IP:/opt/oj-deploy/data/packages/
 # Windows
-upload.bat --scp -u ojupload@服务器IP D:\data\P1000.zip
+scp -P 端口(默认22) D:\data\P1000.zip ojupload@服务器IP:/opt/oj-deploy/data/packages/
 ```
 
 上传后到 OJ 编辑页「路径导入」填 `/data/packages/文件名.zip`。
 
 > 该用户只对 `data/packages/` 有写权限，仅用于上传数据包；建议部署后自行修改密码（`passwd ojupload`）。
-
-### 上传工具下载
-```
-http://服务器IP:OJ端口/tool/upload.bat   # Windows
-http://服务器IP:OJ端口/tool/upload.sh    # Linux/macOS
-```
-用法：`upload.bat -s http://服务器IP:端口 数据包.zip`，上传后把返回的 `/tmp/...` 路径填到「路径导入」。
 
 ## 📝 注意事项
 
