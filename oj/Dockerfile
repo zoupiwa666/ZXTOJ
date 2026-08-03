@@ -9,6 +9,8 @@ RUN rm -f /etc/apt/sources.list.d/debian.sources && \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx mariadb-server zip unzip curl python3 python3-pip \
     libpng-dev libzip-dev libxml2-dev libonig-dev \
+    libjpeg62-turbo-dev libfreetype6-dev libwebp-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-freetype --with-webp \
     && docker-php-ext-install pdo_mysql gd zip mbstring mysqli \
     && printf 'upload_max_filesize = 1024M\npost_max_size = 1024M\nmax_execution_time = 3600\nmax_input_time = 3600\nmemory_limit = 512M\n' > /usr/local/etc/php/conf.d/upload.ini \
     && pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
