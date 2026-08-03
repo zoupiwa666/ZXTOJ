@@ -76,6 +76,13 @@ let msgTimer = null;
 let expandedIds = new Set(); // 已展开的消息id（轮询刷新不丢失）
 let lastFriendList = '';
 
+function avatarHtml(u, size){
+  size = size || 20;
+  if(u && u.avatar) return '<img class="uavatar" src="'+u.avatar+'" width="'+size+'" height="'+size+'">';
+  const ch = (u && u.username ? u.username[0] : '?').toUpperCase();
+  return '<span class="uavatar uavatar-char" style="width:'+size+'px;height:'+size+'px;line-height:'+size+'px;font-size:'+Math.max(9,Math.round(size*0.5))+'px">'+ch+'</span>';
+}
+
 function fmtTime(t){
   if(!t) return '';
   const d = new Date(t.replace(' ','T') + (t.includes('Z')?'':'Z'));
@@ -101,7 +108,7 @@ async function searchUsers(){
   box.style.display = 'block';
   if(!d.users || d.users.length===0){ box.innerHTML = '<div class="sr" style="color:#777">未找到用户</div>'; return; }
   box.innerHTML = d.users.map(u =>
-    `<div class="sr"><span>${u.username} <span style="color:#666">(${u.role})</span></span>` +
+    `<div class="sr"><span style="display:inline-flex;align-items:center;gap:5px">${avatarHtml(u,18)}${u.username} <span style="color:#666">(${u.role})</span></span>` +
     (u.is_friend ? '<span style="color:#0c0;font-size:11px">✓好友</span>'
                 : `<button class="btn btn-sm" onclick="addFriend(${u.id}, this)">添加</button></div>`)
   ).join('');
@@ -119,15 +126,16 @@ async function loadFriends(){
   const list = document.getElementById('friendList');
   const html = (d.friends||[]).map(f => {
     const prev = f.last_msg ? (f.last_msg.length>30 ? f.last_msg.slice(0,30)+'…' : f.last_msg) : '暂无消息';
-    return `<div class="chat-friend${currentFriend==f.id?' active':''}" onclick="openChat(${f.id},'${f.username}')">
-      <span class="cf-name">${f.username}</span><span class="cf-prev">${prev}</span></div>`;
+    return `<div class="chat-friend${currentFriend==f.id?' active':''}" onclick="openChat(${f.id},'${f.username}','${f.avatar||''}')">
+      <span style="display:flex;align-items:center;gap:6px">${avatarHtml(f,20)}<span class="cf-name">${f.username}</span></span>
+      <span class="cf-prev">${prev}</span></div>`;
   }).join('') || '<div style="padding:16px;color:#555;font-size:12px">还没有好友，搜索用户名添加吧</div>';
   if(html !== lastFriendList){ list.innerHTML = html; lastFriendList = html; }
 }
 
-async function openChat(fid, name){
+async function openChat(fid, name, avatar){
   currentFriend = fid;
-  document.getElementById('chatHead').textContent = '与 ' + name + ' 聊天中';
+  document.getElementById('chatHead').innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px">' + avatarHtml({username:name, avatar:avatar}, 22) + '与 ' + name + ' 聊天中</span>';
   document.getElementById('chatInputBox').style.display = 'flex';
   loadFriends();
   await loadMessages();

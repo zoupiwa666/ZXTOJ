@@ -8,7 +8,7 @@ header('Content-Type: application/json; charset=utf-8');
 $me = currentUser();
 $kw = trim($_POST['kw'] ?? '');
 if ($kw === '') { echo json_encode(['users'=>[]]); exit; }
-$stmt = $pdo->prepare("SELECT id, username, role FROM users WHERE username LIKE ? AND id <> ? LIMIT 20");
+$stmt = $pdo->prepare("SELECT id, username, avatar, role FROM users WHERE username LIKE ? AND id <> ? LIMIT 20");
 $stmt->execute(['%'.$kw.'%', $me['id']]);
 $users = $stmt->fetchAll();
 $fstmt = $pdo->prepare("SELECT friend_id FROM chat_friends WHERE user_id=?");

@@ -19,8 +19,8 @@ $sort = $sortMap[$_GET['sort'] ?? 'id'] ?? 'id';
 $dir = strtolower($_GET['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
 $limit = min(max(intval($_GET['limit'] ?? 200), 1), 500);
 
-$stmt = $pdo->prepare("SELECT id, username, language, status, score, total_time, peak_memory, created_at
-                       FROM submissions WHERE problem_id=? ORDER BY $sort $dir LIMIT $limit");
+$stmt = $pdo->prepare("SELECT s.id, s.username, s.language, s.status, s.score, s.total_time, s.peak_memory, s.created_at, u.avatar AS user_avatar
+                       FROM submissions s LEFT JOIN users u ON u.username = s.username WHERE s.problem_id=? ORDER BY $sort $dir LIMIT $limit");
 $stmt->execute([$pid]);
 $rows = $stmt->fetchAll();
 

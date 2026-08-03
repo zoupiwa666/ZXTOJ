@@ -3,6 +3,28 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 $currentUser = isLoggedIn() ? currentUser() : null;
 $currentPage = basename($_SERVER['PHP_SELF']);
+
+// 全站用户头像 + 用户名徽章（用户名左边显示头像）
+function userAvatar($username, $avatar = null, $size = 20) {
+    if ($avatar === null || $avatar === '') {
+        static $cache = [];
+        global $pdo;
+        if (!isset($cache[$username])) {
+            $s = $pdo->prepare("SELECT avatar FROM users WHERE username=?");
+            $s->execute([$username]);
+            $cache[$username] = $s->fetchColumn() ?: '';
+        }
+        $avatar = $cache[$username];
+    }
+    if ($avatar) {
+        return '<img class="uavatar" src="'.htmlspecialchars($avatar).'" width="'.$size.'" height="'.$size.'" alt="">';
+    }
+    return '<span class="uavatar uavatar-char" style="width:'.$size.'px;height:'.$size.'px;line-height:'.$size.'px;font-size:'.max(9, intval($size*0.5)).'px">'.htmlspecialchars(strtoupper(mb_substr($username,0,1))).'</span>';
+}
+function userBadge($username, $avatar = null, $size = 20) {
+    return '<span class="ubadge">'.userAvatar($username, $avatar, $size)
+        .'<a class="ubadge-name" href="user.php?name='.urlencode($username).'">'.htmlspecialchars($username).'</a></span>';
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh">
@@ -67,7 +89,12 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 .copy-btn{position:absolute;top:4px;right:4px;padding:2px 10px;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;font-size:10px;cursor:pointer;letter-spacing:0;font-family:inherit;opacity:0;transition:opacity .15s}
 .copy-btn:hover{background:#2a4a7c;color:#8cf}
 *:hover>.copy-btn{opacity:1}
-.copy-done{color:#0c0!important;border-color:#0c0!important}</style>
+.copy-done{color:#0c0!important;border-color:#0c0!important}
+.ubadge{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;line-height:1}
+.ubadge .uavatar{border-radius:50%;object-fit:cover;display:inline-block;background:#333;flex-shrink:0}
+.ubadge .uavatar-char{background:#2a3a5c;color:#fff;text-align:center;font-weight:700;border-radius:50%;display:inline-block;flex-shrink:0}
+.ubadge-name{color:#ccc;text-decoration:none}
+.ubadge-name:hover{color:#fff}</style>
 <link rel="stylesheet" href="assets/highlight.css"><style>.hljs-ln-numbers{text-align:right;color:#444;border-right:1px solid #222;padding-right:7px;margin-right:7px;user-select:none;font-size:inherit!important;line-height:inherit!important}.hljs-ln td{padding:0!important;background:transparent!important}.hljs-ln tr:hover{background:#0f0f0f}.hljs-ln tr:hover td{background:transparent!important}.hljs[data-highlighted],.hljs [data-highlighted]{font-size:inherit!important;line-height:inherit!important;background:transparent!important}.hljs-ln-code{padding-left:0!important}code.hljs[data-highlighted]{display:contents!important;background:transparent!important;padding:0!important}.hljs,.hljs *,.hljs-ln,.hljs-ln *,.hljs-ln-line{font-family:monospace!important;font-size:12px!important;line-height:1.5!important}
 .hljs-ln td,.hljs-ln th{padding:2px 0!important;border:none!important}
 .hljs-ln-numbers{-webkit-user-select:none;user-select:none}</style></head></head>
@@ -76,7 +103,7 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
   <a class="title" href="/">ZXT SUPER OJ<span>v1</span></a>
   <div class="btns">
     <?php if ($currentUser): ?>
-      <span class="user"><a href="user.php?name=<?= urlencode($currentUser["username"]) ?>" style="color:#fff;text-decoration:none"><?= htmlspecialchars($currentUser["username"]) ?></a></span>
+      <span class="user" style="display:flex;align-items:center"><?= userBadge($currentUser["username"], $currentUser["avatar"] ?? null, 24) ?></span>
       <a href="chat.php">聊天</a>
       <a href="logout.php">退出</a>
     <?php else: ?>

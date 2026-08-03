@@ -43,7 +43,7 @@ th{color:#999;font-size:11px;font-weight:400;text-transform:uppercase;letter-spa
 <?php foreach($codes as $c): $exp=$c['expires_at']&&strtotime($c['expires_at'])<time(); ?>
 <tr>
   <td class="code-cell"><?=substr($c['code'],0,20)?>... <button class="copy-btn" onclick="copyCode('<?=$c['code']?>',this)">复制</button></td>
-  <td><?=$c['created_by']?></td>
+  <td><?= userBadge($c['created_by']) ?></td>
   <td class="<?=$c['is_active']?($exp?'yellow':'green'):'red'?>"><?=$c['is_active']?($exp?'已过期':'有效'):'失效D'?></td>
   <td><?=$c['use_count']?>/<?=$c['max_uses']?></td>
   <td><?=$c['expires_at']??'-'?></td>

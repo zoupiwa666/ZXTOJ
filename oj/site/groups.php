@@ -54,7 +54,7 @@ input{width:100%;padding:8px;background:#000;border:1px solid #333;color:#ddd;ma
   </div>
   <div>
     <?php foreach($ml as $m): ?>
-      <span class="member-chip"><?=htmlspecialchars($m['username'])?>
+      <span class="member-chip"><?= userBadge($m['username'], null, 18) ?>
         <form method="POST" style="display:inline"><input type="hidden" name="action" value="remove_member"><input type="hidden" name="member_id" value="<?=$m['id']?>"><button class="btn-sm" style="background:none;color:#f66;border:none;padding:0">✕</button></form>
       </span>
     <?php endforeach; if(!$ml):?><span style="color:#666;font-size:12px">暂无成员</span><?php endif;?>

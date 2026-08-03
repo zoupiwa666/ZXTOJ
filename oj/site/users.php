@@ -13,7 +13,7 @@ $users=$pdo->query("SELECT * FROM users ORDER BY role DESC, id")->fetchAll();
 <tr><th>编号</th><th>用户名</th><th>角色</th><th>注册时间</th><th>操作</th></tr>
 <?php foreach($users as $u): ?>
 <tr>
-  <td><?=$u['id']?></td><td><?=htmlspecialchars($u['username'])?></td>
+  <td><?=$u['id']?></td><td><?= userBadge($u['username'], $u['avatar'] ?? null) ?></td>
   <td><span class="badge badge-<?=$u['role']==='super_admin'?'sa':($u['role']==='admin'?'ad':'us')?>"><?=$u['role']?></span></td>
   <td style="color:var(--muted)"><?=$u['created_at']?></td>
   <td><?php if($u['id']!=$currentUser['id']):?>

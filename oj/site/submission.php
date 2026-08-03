@@ -77,7 +77,7 @@ require __DIR__ . '/inc/header.php';
 <div class="sub-header">
   <h1>提交 #<?=$id?></h1>
   <div class="meta-grid">
-    <span class="label">用户</span><span class="val"><a href="user.php?name=<?=urlencode($sub['username'])?>" style="color:#ccc;text-decoration:none"><?=htmlspecialchars($sub['username'])?></a></span>
+    <span class="label">用户</span><span class="val"><?= userBadge($sub['username']) ?></span>
     <span class="label">题目</span><span class="val"><a href="problem.php?id=<?=$sub['problem_id']?>" style="color:#ccc;text-decoration:none"><?=$sub['problem_id']?></a></span>
     <span class="label">状态</span><span class="val s-<?=$sc?>"><b><?=$sub['status']?></b></span>
     <span class="label">分数</span><span class="val"><?=$sub['score']?> / <?=$sub['max_score']?></span>

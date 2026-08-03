@@ -108,7 +108,7 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
     <span class="status-score"><?=intval($r['score'])?></span> <?=$label?>
   </a></td>
   <td><a href="problem.php?id=<?=$r['problem_id']?>"><b><?=$r['problem_id']?></b></a></td>
-  <td><a href="user.php?name=<?=urlencode($r['username'])?>"><?=htmlspecialchars($r['username'])?></a></td>
+  <td><?= userBadge($r['username']) ?></td>
   <td class="time-cell"><?=$timeStr?></td>
   <td class="mem-cell"><?=$memStr?></td>
   <td><?=$r['language']?></td>

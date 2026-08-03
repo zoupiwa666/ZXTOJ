@@ -69,7 +69,7 @@ require __DIR__ . '/inc/header.php';
 ?>
 <tr>
   <td><a href="submission.php?id=<?=$r['id']?>" class="ac-badge">AC</a></td>
-  <td><a href="user.php?name=<?=urlencode($r['username'])?>"><?=htmlspecialchars($r['username'])?></a></td>
+  <td><?= userBadge($r['username']) ?></td>
   <td class="time-cell"><?=$timeStr?></td>
   <td class="mem-cell"><?=number_format($r['peak_memory'],1)?> MB</td>
   <td style="color:#fff;font-weight:700"><?=$r['score']?></td>

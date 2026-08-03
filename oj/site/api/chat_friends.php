@@ -7,7 +7,7 @@ require_once __DIR__.'/../inc/chat_tables.php';
 header('Content-Type: application/json; charset=utf-8');
 $me = currentUser();
 $stmt = $pdo->prepare(
-  "SELECT u.id, u.username, u.role,
+  "SELECT u.id, u.username, u.avatar, u.role,
      (SELECT m.content FROM chat_messages m
        WHERE (m.sender_id=cf.friend_id AND m.receiver_id=cf.user_id)
           OR (m.sender_id=cf.user_id AND m.receiver_id=cf.friend_id)

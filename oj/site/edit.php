@@ -140,7 +140,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <?php $perms=$pdo->prepare("SELECT * FROM problem_permissions WHERE problem_id=?");$perms->execute([$pid]);$plist=$perms->fetchAll();if($plist):?>
 <table style="width:100%;font-size:11px;color:#888">
 <?php foreach($plist as $pm):?>
-<tr><td><?=htmlspecialchars($pm['username'])?></td><td style="color:#666">by <?=$pm['granted_by']?></td><td>
+<tr><td><?= userBadge($pm['username'], null, 16) ?></td><td style="color:#666">by <?= userBadge($pm['granted_by'], null, 14) ?></td><td>
 <form method="POST" style="display:inline"><input type="hidden" name="action" value="revoke_user"><input type="hidden" name="perm_id" value="<?=$pm['id']?>"><button class="btn-sm btn-danger">撤销</button></form></td></tr>
 <?php endforeach?>
 </table>
