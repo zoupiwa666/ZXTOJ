@@ -192,9 +192,10 @@ fi
 # 创建专用上传用户 ojupload（用于 scp 上传数据包，任何部署机器都可用）
 if ! id ojupload >/dev/null 2>&1; then
   info "创建上传用户 ojupload..."
-  if ! useradd -m -s /bin/bash ojupload; then
+  # 显式指定家目录 /home/ojupload，避免被建到 /root 导致 scp 无法写
+  if ! useradd -m -d /home/ojupload -s /bin/bash ojupload; then
     err "创建用户 ojupload 失败！请确认用 root 权限运行本脚本（sudo ./start.sh）"
-    err "手动创建方法: useradd -m -s /bin/bash ojupload && passwd ojupload"
+    err "手动创建方法: useradd -m -d /home/ojupload -s /bin/bash ojupload && passwd ojupload"
   else
     OJ_UPLOAD_PW="OjUp$(date +%s | tail -c 5)@$(date +%Y)"
     if echo "ojupload:$OJ_UPLOAD_PW" | chpasswd; then
@@ -206,6 +207,13 @@ if ! id ojupload >/dev/null 2>&1; then
     fi
   fi
 else
+  # 修正家目录（防止家目录是 /root 或不存在导致 scp 权限问题）
+  OH=$(getent passwd ojupload | cut -d: -f6)
+  if [ "$OH" = "/root" ] || [ ! -d "$OH" ]; then
+    info "修正 ojupload 家目录到 /home/ojupload..."
+    usermod -d /home/ojupload -m ojupload 2>/dev/null || mkdir -p /home/ojupload && chown ojupload:ojupload /home/ojupload
+    ok "ojupload 家目录已修正为 /home/ojupload"
+  fi
   if [ -f data/.ojupload_pw ]; then
     OJ_UPLOAD_PW=$(cat data/.ojupload_pw)
     ok "上传用户 ojupload 已存在，密码: $OJ_UPLOAD_PW"
