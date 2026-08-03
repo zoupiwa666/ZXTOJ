@@ -48,6 +48,7 @@ if not exist "%FILE%" (
 
 echo Server: %SERVER%
 echo [Uploading] %FILE% ...
+echo (progress bar below, please wait...)
 curl --progress-bar -F "file=@%FILE%" "%SERVER%/api/tool_upload.php"
 echo.
 echo.

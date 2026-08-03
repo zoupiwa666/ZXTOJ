@@ -49,6 +49,7 @@ fi
 
 echo "Server: $SERVER"
 echo "[Uploading] $FILE ..."
+echo "  (progress bar below, please wait)"
 
 RESP=$(curl --progress-bar -F "file=@$FILE" "$SERVER/api/tool_upload.php")
 echo "$RESP"
