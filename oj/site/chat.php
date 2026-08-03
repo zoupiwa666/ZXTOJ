@@ -26,6 +26,15 @@ $me = currentUser();
 .cmsg .cm-expand{display:block;margin-top:6px;background:none;border:none;color:#5af;font-size:11px;cursor:pointer;padding:0;font-family:inherit}
 .cmsg .cm-expand:hover{text-decoration:underline}
 .cmsg .cm-t{display:block;font-size:10px;color:#777;margin-top:4px}
+.cmsg .cm-body h1,.cmsg .cm-body h2,.cmsg .cm-body h3{font-size:14px;margin:6px 0 4px}
+.cmsg .cm-body p{margin:4px 0}
+.cmsg .cm-body ul,.cmsg .cm-body ol{margin:4px 0 4px 18px}
+.cmsg .cm-body code{background:#333;padding:1px 4px;border-radius:3px;font-size:12px}
+.cmsg .cm-body pre{background:#111;padding:8px;border-radius:4px;overflow-x:auto;margin:6px 0}
+.cmsg .cm-body pre code{background:none;padding:0}
+.cmsg .cm-body a{color:#5af}
+.cmsg .cm-body img{max-width:100%;border-radius:4px}
+.cmsg .cm-body blockquote{border-left:3px solid #444;padding-left:8px;color:#999;margin:4px 0}
 .cmsg.mine{align-self:flex-end;background:#1a3a5c;color:#ddd}
 .cmsg.theirs{align-self:flex-start;background:#2a2a2a;color:#ddd}
 .chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid #222;background:#181818}
@@ -57,6 +66,10 @@ $me = currentUser();
   </div>
 </div>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"></script>
+<script src="assets/marked.min.js"></script>
 <script>
 let currentFriend = null;
 let msgTimer = null;
@@ -134,15 +147,22 @@ async function loadMessages(){
     const expanded = expandedIds.has(m.id);
     let body;
     if(isLong && !expanded){
-      body = `<span class="cm-body cm-long">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="expandMsg(${m.id}, this)">展开全部</button>`;
+      body = `<span class="cm-body cm-long md">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="expandMsg(${m.id}, this)">展开全部</button>`;
     } else if(isLong && expanded){
-      body = `<span class="cm-body">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="collapseMsg(${m.id}, this)">收起</button>`;
+      body = `<span class="cm-body md">${escapeHtml(m.content)}</span><button class="cm-expand" onclick="collapseMsg(${m.id}, this)">收起</button>`;
     } else {
-      body = `<span class="cm-body">${escapeHtml(m.content)}</span>`;
+      body = `<span class="cm-body md">${escapeHtml(m.content)}</span>`;
     }
     return `<div class="cmsg ${mine?'mine':'theirs'}">${body}<span class="cm-t">${fmtTime(m.created_at)}</span></div>`;
   }).join('') || '<div class="chat-empty">还没有消息，说点什么吧</div>';
   box.innerHTML = html;
+  // 渲染 Markdown + KaTeX（与题面一致）
+  box.querySelectorAll('.cm-body.md').forEach(el => {
+    el.innerHTML = marked.parse(el.textContent);
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(el, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+    }
+  });
   box.scrollTop = box.scrollHeight;
 }
 
