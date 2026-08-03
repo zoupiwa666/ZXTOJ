@@ -192,12 +192,19 @@ fi
 # 创建专用上传用户 ojupload（用于 scp 上传数据包，任何部署机器都可用）
 if ! id ojupload >/dev/null 2>&1; then
   info "创建上传用户 ojupload..."
-  useradd -m -s /bin/bash ojupload 2>/dev/null || { err "创建用户失败（可能需要 root 权限）"; }
-  OJ_UPLOAD_PW="OjUp$(date +%s | tail -c 5)@$(date +%Y)"
-  echo "ojupload:$OJ_UPLOAD_PW" | chpasswd 2>/dev/null
-  echo "$OJ_UPLOAD_PW" > data/.ojupload_pw
-  chmod 600 data/.ojupload_pw
-  ok "已创建上传用户 ojupload，密码: $OJ_UPLOAD_PW"
+  if ! useradd -m -s /bin/bash ojupload; then
+    err "创建用户 ojupload 失败！请确认用 root 权限运行本脚本（sudo ./start.sh）"
+    err "手动创建方法: useradd -m -s /bin/bash ojupload && passwd ojupload"
+  else
+    OJ_UPLOAD_PW="OjUp$(date +%s | tail -c 5)@$(date +%Y)"
+    if echo "ojupload:$OJ_UPLOAD_PW" | chpasswd; then
+      echo "$OJ_UPLOAD_PW" > data/.ojupload_pw
+      chmod 600 data/.ojupload_pw
+      ok "已创建上传用户 ojupload，密码: $OJ_UPLOAD_PW"
+    else
+      err "设置 ojupload 密码失败，请手动执行: passwd ojupload"
+    fi
+  fi
 else
   if [ -f data/.ojupload_pw ]; then
     OJ_UPLOAD_PW=$(cat data/.ojupload_pw)
