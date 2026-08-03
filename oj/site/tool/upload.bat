@@ -48,7 +48,7 @@ if not exist "%FILE%" (
 
 echo Server: %SERVER%
 echo [Uploading] %FILE% ...
-curl -s -F "file=@%FILE%" "%SERVER%/api/tool_upload.php"
+curl -s --progress-bar -F "file=@%FILE%" "%SERVER%/api/tool_upload.php"
 echo.
 echo.
 echo [DONE] Copy the returned /tmp/... path and paste it into
