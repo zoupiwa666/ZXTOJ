@@ -28,5 +28,8 @@ export JUDGE_URL=$(php -r "require '/var/www/oj/inc/config.php'; echo \$JUDGE_UR
 DB_PASS_ENV=$DB_PASS python3 /var/www/oj/api/oj_worker.py > /tmp/oj_worker.log 2>&1 &
 echo "[Init] Worker 已启动"
 
+# 启动上传停滞监控（10s无进展自动断开卡死上传）
+python3 /opt/monitor_uploads.py >/tmp/oj_upload_monitor.log 2>&1 &
+
 php-fpm -D
 nginx -g 'daemon off;'
