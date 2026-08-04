@@ -6,7 +6,7 @@ require_once __DIR__.'/inc/chat_tables.php';
 $me = currentUser();
 ?>
 <style>
-.chat-wrap{display:flex;gap:0;min-height:520px;border:1px solid #222;background:#141414}
+.chat-wrap{display:flex;gap:0;height:560px;border:1px solid #222;background:#141414}
 .chat-side{width:260px;border-right:1px solid #222;display:flex;flex-direction:column;background:#181818}
 .chat-side .search-box{padding:10px;border-bottom:1px solid #222}
 .chat-side .search-res{max-height:140px;overflow:auto;border-bottom:1px solid #222;display:none}
@@ -17,9 +17,13 @@ $me = currentUser();
 .chat-friend:hover,.chat-friend.active{background:#222}
 .chat-friend .cf-name{color:#fff;font-size:13px}
 .chat-friend .cf-prev{color:#777;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
-.chat-main{flex:1;display:flex;flex-direction:column}
+.chat-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
 .chat-head{padding:12px 16px;border-bottom:1px solid #222;color:#fff;font-size:14px;background:#1a1a1a}
-.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.chat-msgs{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.chat-msgs::-webkit-scrollbar{width:8px}
+.chat-msgs::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+.chat-msgs::-webkit-scrollbar-thumb:hover{background:#444}
+.chat-msgs::-webkit-scrollbar-track{background:transparent}
 .cmsg{max-width:70%;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5}
 .cmsg .cm-body{display:block;white-space:pre-wrap;word-break:break-word}
 .cmsg .cm-body.cm-long{max-height:72px;overflow:hidden}
