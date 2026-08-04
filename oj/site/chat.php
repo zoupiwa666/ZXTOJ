@@ -171,6 +171,8 @@ async function loadMessages(){
       renderMathInElement(el, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
     }
   });
+  // 高亮消息中的代码块（带语言的）
+  if (window.highlightCodeBlocks) highlightCodeBlocks(box);
   box.scrollTop = box.scrollHeight;
 }
 
