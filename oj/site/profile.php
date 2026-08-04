@@ -76,10 +76,13 @@ textarea:focus{border-color:#999}
 async function uploadAvatar(input){
  if(!input.files[0])return;
  const f=new FormData();f.append('avatar',input.files[0]);
- const r=await fetch('api/avatar.php',{method:'POST',body:f});
- const d=await r.json();
- if(d.ok) location.reload();
- else alert('上传失败');
+ try{
+  const r=await fetch('api/avatar.php',{method:'POST',body:f});
+  let d;
+  try{ d=await r.json(); }catch(e){ alert('服务器返回异常 (HTTP '+r.status+')，请检查 OJ 镜像 GD 支持'); return; }
+  if(d.ok) location.reload();
+  else alert(d.message || '上传失败');
+ }catch(e){ alert('上传失败: '+e.message); }
 }
 </script>
 <?php require __DIR__ . '/inc/footer.php'; ?>
