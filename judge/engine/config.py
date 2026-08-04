@@ -7,7 +7,7 @@ POOL_SIZE = int(os.environ.get("JUDGE_POOL_SIZE", "3") or "3")
 CONTAINER_MEMORY_LIMIT = os.environ.get("JUDGE_MEM_LIMIT", "512m") or "512m"
 CONTAINER_CPU_LIMIT = float(os.environ.get("JUDGE_CPU_LIMIT", "0.5") or "0.5")
 CONTAINER_NETWORK_DISABLED = True
-CONTAINER_TIMEOUT = 300
+CONTAINER_TIMEOUT = 600
 
 TEMP_DIR = "/tmp/judge_workspace"
 os.makedirs(TEMP_DIR, exist_ok=True)
