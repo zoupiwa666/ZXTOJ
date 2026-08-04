@@ -24,6 +24,7 @@ require __DIR__ . '/inc/header.php';
 select{width:auto;padding:8px 12px;background:#0a0a0a;border:1px solid #2a2a2a;color:#ddd;font-size:13px;font-family:inherit;outline:none;margin-bottom:12px}
 select:focus{border-color:#444}
 textarea{width:100%;min-height:300px;padding:12px;background:#0a0a0a;border:1px solid #2a2a2a;color:#ddd;font-family:Consolas,'Courier New',monospace;font-size:13px;resize:vertical;outline:none;margin-bottom:12px}
+textarea#code{min-height:400px}  /* 代码编辑框加长（覆盖浮动输入框的 60px 限制） */
 textarea:focus{border-color:#444}
 .btn-submit{width:100%;padding:12px;background:#2a2a2a;color:#ccc;border:none;font-size:14px;font-weight:600;letter-spacing:1px;cursor:pointer;font-family:inherit}
 .btn-submit:hover{background:#3a3a3a;color:#fff}
