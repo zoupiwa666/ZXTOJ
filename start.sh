@@ -295,19 +295,19 @@ done
 if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "USE judge_problems" >/dev/null 2>&1; then
   info "初始化数据库（建库+导入表结构）..."
   docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "CREATE DATABASE IF NOT EXISTS judge_problems CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" 2>/dev/null || true
-  docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null
+  docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null || true
   ok "数据库初始化完成"
 else
   # 迁移兼容：旧库可能缺少新增表（如 problem_permissions），自动补齐
   if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" judge_problems -e "SHOW TABLES LIKE 'problem_permissions'" 2>/dev/null | grep -q problem_permissions; then
     info "检测到数据库缺少新表，自动导入 init.sql 补齐..."
-    docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null
+    docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null || true
     ok "数据库表结构已补齐"
   fi
 fi
 
 # 强制 root 密码与 .env 一致（防止新建库密码不匹配，覆盖有密码/无密码两种情况）
-docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASS'; ALTER USER 'root'@'%' IDENTIFIED BY '$DB_PASS'; FLUSH PRIVILEGES;" >/dev/null 2>&1
+docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASS'; ALTER USER 'root'@'%' IDENTIFIED BY '$DB_PASS'; FLUSH PRIVILEGES;" >/dev/null 2>&1 || true
 ok "数据库 root 密码已强制为 .env 配置"
 
 # 8. 启动 OJ 容器
