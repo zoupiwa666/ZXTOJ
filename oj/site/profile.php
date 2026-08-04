@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/inc/config.php';
+require_once __DIR__ . '/inc/sanitize.php';
 require __DIR__ . '/inc/auth.php';
 requireLogin();
 $user = currentUser();
@@ -20,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     if (isset($_POST['motto'])) {
-        $motto = mb_substr(trim($_POST['motto']), 0, 200);
+        $motto = mb_substr(sanitize_text(trim($_POST['motto'])), 0, 200);
         $pdo->prepare("UPDATE users SET motto=? WHERE id=?")->execute([$motto, $user['id']]);
         $msg = '已更新.';
     }

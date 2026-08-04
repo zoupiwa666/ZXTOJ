@@ -1,5 +1,5 @@
 <?php
-require __DIR__.'/inc/config.php'; require __DIR__.'/inc/auth.php'; requireRole('admin');
+require __DIR__.'/inc/config.php'; require __DIR__.'/inc/auth.php'; requireRole('admin'); require_once __DIR__.'/inc/sanitize.php';
 $pid = $_GET['id'] ?? ''; $isNew = empty($pid); $msg = ''; $problem = null;
 
 if (!$isNew) {
@@ -10,8 +10,8 @@ if (!$isNew) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'save_problem') {
-        $title=$_POST['title']??'';$bg=$_POST['background']??'';$desc=$_POST['description']??'';
-        $inf=$_POST['input_format']??'';$outf=$_POST['output_format']??'';$hint=$_POST['hints']??'';
+        $title=sanitize_text($_POST['title']??'');$bg=sanitize_text($_POST['background']??'');$desc=sanitize_text($_POST['description']??'');
+        $inf=sanitize_text($_POST['input_format']??'');$outf=sanitize_text($_POST['output_format']??'');$hint=sanitize_text($_POST['hints']??'');
         $tl=floatval($_POST['time_limit']??2);$ml=intval($_POST['memory_limit']??128);
         $vis=$_POST['visibility']??'public';
         if ($isNew) {

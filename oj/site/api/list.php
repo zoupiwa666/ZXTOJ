@@ -1,6 +1,7 @@
 <?php
 require __DIR__.'/../inc/config.php';
 require __DIR__.'/../inc/auth.php';
+require_once __DIR__.'/../inc/sanitize.php';
 requireLogin();
 
 $method = $_GET['m'] ?? 'view';
@@ -30,9 +31,9 @@ function canViewList($pdo, $list, $user) {
 switch ($method) {
     case 'create': // 创建列表
         requireRole('admin');
-        $name = trim($_POST['name'] ?? '');
+        $name = sanitize_name(trim($_POST['name'] ?? ''), 50);
         $vis = ($_POST['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
-        $tags = trim($_POST['tags'] ?? '');
+        $tags = sanitize_text(trim($_POST['tags'] ?? ''), 200);
         if (!$name) die(json_encode(['error'=>'缺少列表名']));
         $pdo->prepare("INSERT INTO lists (name,visibility,created_by,tags) VALUES (?,?,?,?)")->execute([$name,$vis,$me['username'],$tags]);
         die(json_encode(['ok'=>true,'id'=>$pdo->lastInsertId()]));

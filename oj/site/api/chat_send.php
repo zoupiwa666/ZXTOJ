@@ -2,12 +2,13 @@
 // 聊天 - 发送消息（单条最多1.5KB，发送后数据库只留最新10条）
 require __DIR__.'/../inc/config.php';
 require __DIR__.'/../inc/auth.php';
+require __DIR__.'/../inc/sanitize.php';
 requireLogin();
 require_once __DIR__.'/../inc/chat_tables.php';
 header('Content-Type: application/json; charset=utf-8');
 $me = currentUser();
 $fid = intval($_POST['friend_id'] ?? 0);
-$content = trim($_POST['content'] ?? '');
+$content = sanitize_text(trim($_POST['content'] ?? ''), 3500);
 if ($fid <= 0 || $content === '') { echo json_encode(['ok'=>false,'message'=>'消息不能为空']); exit; }
 if (strlen($content) > 3500) { echo json_encode(['ok'=>false,'message'=>'单条消息不能超过3.5KB']); exit; }
 $s = $pdo->prepare("SELECT 1 FROM chat_friends WHERE user_id=? AND friend_id=?");

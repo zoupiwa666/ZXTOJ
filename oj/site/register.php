@@ -1,6 +1,7 @@
-<?php require __DIR__ . '/inc/config.php'; $error='';$ok='';
+<?php require __DIR__ . '/inc/config.php';
+require_once __DIR__ . '/inc/sanitize.php'; $error='';$ok='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
- $inv=trim($_POST['invite']??'');$un=trim($_POST['username']??'');$pw=$_POST['password']??'';$cf=$_POST['confirm']??'';
+ $inv=trim($_POST['invite']??'');$un=sanitize_name(trim($_POST['username']??''),30);$pw=$_POST['password']??'';$cf=$_POST['confirm']??'';
  if(strlen($un)<2||strlen($un)>50)$error='用户名: 2-50个字符';
  elseif(!preg_match('/^[a-zA-Z0-9_]+$/',$un))$error='用户名: 仅字母数字下划线';
  elseif(strlen($pw)<6)$error='密码: 至少6位';
