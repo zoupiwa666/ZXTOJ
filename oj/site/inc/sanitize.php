@@ -20,3 +20,24 @@ function sanitize_name(string $s, int $maxLen = 50): string {
     }
     return $s;
 }
+
+// HTML 白名单净化（聊天等可渲染内容）：
+//   允许: input/textarea/button/font/p/span 等装饰性标签
+//   禁止: script/form/iframe/head/meta/style/object/embed 等危险标签
+//   同时剥离 on* 事件属性和 javascript:/vbscript:/data: 协议
+function sanitize_html(string $s): string {
+    $allowed = '<input><textarea><button><font><p><span><b><i><u><strong><em><br>'
+              .'<a><code><pre><h1><h2><h3><h4><ul><ol><li><blockquote><img>'
+              .'<table><tbody><tr><td><th><div><hr><sup><sub>';
+    // 1) 移除所有 on* 事件属性（onclick/onerror/onload/onmouseover 等）
+    $s = preg_replace("/\s+on[a-z]+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)/i", '', $s);
+    // 2) 移除 href/src/action 中的 javascript:/vbscript:/data: 协议
+    $s = preg_replace_callback("/\s+(?:href|src|action)\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)/i",
+        function($m) {
+            if (preg_match("/^\s*[\"']?\s*(?:javascript|vbscript|data):/i", $m[1])) return '';
+            return $m[0];
+        }, $s);
+    // 3) 白名单过滤：白名单外的标签全部剥掉（保留文本内容）
+    $s = strip_tags($s, $allowed);
+    return $s;
+}
