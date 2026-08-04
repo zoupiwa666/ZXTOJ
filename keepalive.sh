@@ -22,7 +22,7 @@ DB_PASS=$(grep '^DB_PASS=' /opt/oj-deploy/.env | head -1 | cut -d= -f2)
 DB_PASS="${DB_PASS:-zxt_oj_pass_2026}"
 
 echo "[$(date '+%F %T')] worker 未运行，正在拉起..." >> "$LOG"
-docker exec -d "$CT" bash -c "cd /var/www/oj && JUDGE_URL=http://zxt-judge:8000 DB_HOST=127.0.0.1 DB_PORT=3306 DB_USER=root DB_PASS=$DB_PASS python3 -u api/oj_worker.py >> /tmp/oj_worker.log 2>&1"
+docker exec -d "$CT" bash -c "cd /var/www/oj && JUDGE_URL=http://zxt-judge:8000 DB_HOST=zxt-db DB_PORT=3306 DB_USER=root DB_PASS=$DB_PASS python3 -u api/oj_worker.py >> /tmp/oj_worker.log 2>&1"
 sleep 3
 if docker exec "$CT" sh -c "pgrep -f oj_worker >/dev/null 2>&1"; then
   echo "[$(date '+%F %T')] worker 已恢复" >> "$LOG"

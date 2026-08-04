@@ -1,6 +1,15 @@
 version: "3.8"
 
 services:
+  db:
+    image: mariadb:11
+    container_name: zxt-db
+    environment:
+      - MARIADB_ROOT_PASSWORD=${DB_PASS:-zxt_oj_pass_2026}
+    volumes:
+      - ./oj-mysql:/var/lib/mysql
+    restart: unless-stopped
+
   judge:
     build: ./judge
     container_name: zxt-judge
@@ -24,14 +33,14 @@ services:
     ports:
       - "${OJ_PORT:-18001}:80"
     environment:
-      - JUDGE_URL=${JUDGE_URL:-http://127.0.0.1:18000}
-      - DB_HOST=127.0.0.1
+      - JUDGE_URL=${JUDGE_URL:-http://zxt-judge:8000}
+      - DB_HOST=zxt-db
       - DB_PORT=3306
       - DB_USER=root
       - DB_PASS=${DB_PASS:-zxt_oj_pass_2026}
     volumes:
       - /data:/data
-      - ./oj-mysql:/var/lib/mysql
     depends_on:
+      - db
       - judge
     restart: unless-stopped

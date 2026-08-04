@@ -249,6 +249,38 @@ docker run -d --name zxt-judge \
   zxt-judge:latest >/dev/null
 ok "评测机容器启动"
 
+# 7.5 启动独立数据库容器 zxt-db（MariaDB）
+info "启动数据库容器 zxt-db..."
+if ! docker ps -a --format '{{.Names}}' | grep -qx zxt-db; then
+  docker rm -f zxt-db 2>/dev/null || true
+  docker run -d --name zxt-db \
+    --network $NETWORK \
+    -e MARIADB_ROOT_PASSWORD=$DB_PASS \
+    -v "$(pwd)/oj-mysql":/var/lib/mysql \
+    --restart unless-stopped \
+    mariadb:11 >/dev/null
+  ok "zxt-db 容器已创建"
+else
+  ok "zxt-db 容器已存在"
+fi
+# 等待数据库就绪
+info "等待数据库就绪..."
+DB_READY=0
+for i in $(seq 1 60); do
+  if docker exec zxt-db mariadb-admin ping -uroot -p$DB_PASS --silent >/dev/null 2>&1; then
+    DB_READY=1; break
+  fi
+  sleep 2
+done
+[ "$DB_READY" = "1" ] && ok "数据库就绪" || err "数据库启动超时，请检查: docker logs zxt-db"
+# 首次初始化：建库 + 导入表结构（已有数据则跳过）
+if ! docker exec zxt-db mariadb -uroot -p$DB_PASS -e "USE judge_problems" >/dev/null 2>&1; then
+  info "初始化数据库（建库+导入表结构）..."
+  docker exec zxt-db mariadb -uroot -p$DB_PASS -e "CREATE DATABASE IF NOT EXISTS judge_problems CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+  docker exec -i zxt-db mariadb -uroot -p$DB_PASS judge_problems < oj/init.sql
+  ok "数据库初始化完成"
+fi
+
 # 8. 启动 OJ 容器
 info "启动 OJ 容器..."
 docker rm -f zxt-oj 2>/dev/null || true
@@ -257,8 +289,7 @@ docker run -d --name zxt-oj \
   --add-host=host.docker.internal:host-gateway \
   -p $OJ_PORT:80 \
   -e JUDGE_URL=$JUDGE_URL \
-  -e DB_HOST=127.0.0.1 -e DB_PORT=3306 -e DB_USER=root -e DB_PASS=$DB_PASS \
-  -v "$(pwd)/oj-mysql":/var/lib/mysql \
+  -e DB_HOST=zxt-db -e DB_PORT=3306 -e DB_USER=root -e DB_PASS=$DB_PASS \
   -v "$(pwd)/oj/site":/var/www/oj \
   -v "$(pwd)/data":/data \
   --restart unless-stopped \
@@ -287,7 +318,7 @@ ok "worker 依赖就绪"
 # 11. 启动 OJ 容器内 Worker
 info "启动评测 Worker..."
 docker exec zxt-oj bash -c "pkill -f oj_worker 2>/dev/null; sleep 1" || true
-docker exec -d zxt-oj bash -c "cd /var/www/oj && JUDGE_URL=$JUDGE_URL DB_HOST=127.0.0.1 DB_PORT=3306 DB_USER=root DB_PASS=$DB_PASS python3 -u api/oj_worker.py > /tmp/oj_worker.log 2>&1"
+docker exec -d zxt-oj bash -c "cd /var/www/oj && JUDGE_URL=$JUDGE_URL DB_HOST=zxt-db DB_PORT=3306 DB_USER=root DB_PASS=$DB_PASS python3 -u api/oj_worker.py > /tmp/oj_worker.log 2>&1"
 sleep 2
 ok "Worker 已启动"
 
