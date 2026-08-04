@@ -111,8 +111,8 @@ async function loadStats(sort){
    const t=parseFloat(x.total_time)||0;
    tr.innerHTML='<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a"><a href="submission.php?id='+x.id+'" style="color:'+(colorMap[x.status]||'#ccc')+';text-decoration:none;font-weight:600">'+x.status+'</a></td>'
     +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a"><a href="user.php?name='+encodeURIComponent(x.username)+'" style="color:#ccc;text-decoration:none;display:inline-flex;align-items:center;gap:5px">'+(x.user_avatar?'<img src="'+x.user_avatar+'" style="width:18px;height:18px;border-radius:50%;object-fit:cover">':'<span style="width:18px;height:18px;border-radius:50%;background:#2a3a5c;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">'+(x.username[0]||'?').toUpperCase()+'</span>')+x.username+'</a></td>'
-    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;font-family:Consolas,'Courier New',monospace;color:#aaa">'+(t>=1?t.toFixed(3)+'s':(t*1000).toFixed(0)+'ms')+'</td>'
-    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;font-family:Consolas,'Courier New',monospace;color:#aaa">'+Number(x.peak_memory).toFixed(1)+' MB</td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;font-family:Consolas,monospace;color:#aaa">'+(t>=1?t.toFixed(3)+'s':(t*1000).toFixed(0)+'ms')+'</td>'
+    +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;font-family:Consolas,monospace;color:#aaa">'+Number(x.peak_memory).toFixed(1)+' MB</td>'
     +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;color:#fff;font-weight:700">'+x.score+'</td>'
     +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;color:#888">'+x.language+'</td>'
     +'<td style="padding:6px 8px;border-bottom:1px solid #1a1a1a;color:#666;font-size:10px">'+x.created_at+'</td>';
