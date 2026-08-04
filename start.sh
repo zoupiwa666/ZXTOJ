@@ -6,25 +6,39 @@
 set -e
 cd "$(dirname "$0")"
 
+# 颜色
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+ok(){ echo -e "${GREEN}[OK]${NC} $1"; }
+info(){ echo -e "${YELLOW}[..]${NC} $1"; }
+err(){ echo -e "${RED}[!!]${NC} $1"; }
+
 # 参数解析
 OJ_UPLOAD_PW=""
 FORCE_REBUILD=0
 for arg in "$@"; do
   case "$arg" in
     --rebuild) FORCE_REBUILD=1 ;;
+    --reset)
+      echo -e "${RED}[!!]${NC} 即将完全重置部署！将删除所有容器、镜像、数据库(oj-mysql/)、数据(data/)和配置(.env)！"
+      read -r -p "确认重置？输入 yes 继续: " CONFIRM
+      if [ "$CONFIRM" != "yes" ]; then echo "已取消重置"; exit 0; fi
+      info "删除项目容器..."
+      docker rm -f zxt-oj zxt-judge zxt-db 2>/dev/null || true
+      docker ps -aq --filter name=judge-pool | xargs -r docker rm -f 2>/dev/null || true
+      info "删除项目镜像..."
+      docker rmi -f zxt-oj:latest zxt-judge:latest judge-sandbox:latest 2>/dev/null || true
+      info "删除数据库/数据/配置..."
+      rm -rf oj-mysql data .env
+      ok "已完全重置，开始全新部署"
+      FORCE_REBUILD=1 ;;
     -h|--help)
-      echo "用法: $0 [--rebuild]"
+      echo "用法: $0 [--rebuild] [--reset]"
       echo "  --rebuild   强制重新构建所有镜像（zxt-oj / zxt-judge / judge-sandbox）"
+      echo "  --reset     完全重置：删除所有容器/镜像/数据库/数据/配置，重新全新部署"
       echo "  无参数       仅在镜像不存在时构建，启动已有镜像"
       exit 0 ;;
   esac
 done
-
-# 颜色
-GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
-ok(){ echo -e "${GREEN}[OK]${NC} $1"; }
-info(){ echo -e "${YELLOW}[..]${NC} $1"; }
-err(){ echo -e "${RED}[!!]${NC} $1"; }
 
 # 加载 .env 配置
 if [ -f .env ]; then
@@ -287,6 +301,10 @@ else
     ok "数据库表结构已补齐"
   fi
 fi
+
+# 强制 root 密码与 .env 一致（防止新建库密码不匹配）
+docker exec zxt-db mariadb -uroot -p$DB_PASS -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASS'; ALTER USER 'root'@'%' IDENTIFIED BY '$DB_PASS'; FLUSH PRIVILEGES;" >/dev/null 2>&1 || docker exec zxt-db mariadb -uroot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASS'; ALTER USER 'root'@'%' IDENTIFIED BY '$DB_PASS'; FLUSH PRIVILEGES;" >/dev/null 2>&1
+ok "数据库 root 密码已强制为 .env 配置"
 
 # 8. 启动 OJ 容器
 info "启动 OJ 容器..."
