@@ -290,14 +290,14 @@ done
 # 首次初始化：建库 + 导入表结构（已有数据则跳过）
 if ! docker exec zxt-db mariadb -uroot -p$DB_PASS -e "USE judge_problems" >/dev/null 2>&1; then
   info "初始化数据库（建库+导入表结构）..."
-  docker exec zxt-db mariadb -uroot -p$DB_PASS -e "CREATE DATABASE IF NOT EXISTS judge_problems CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-  docker exec -i zxt-db mariadb --force -uroot -p$DB_PASS judge_problems < oj/init.sql
+  docker exec zxt-db mariadb -uroot -p$DB_PASS -e "CREATE DATABASE IF NOT EXISTS judge_problems CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" 2>/dev/null
+  docker exec -i zxt-db mariadb --force -uroot -p$DB_PASS judge_problems < oj/init.sql 2>/dev/null
   ok "数据库初始化完成"
 else
   # 迁移兼容：旧库可能缺少新增表（如 problem_permissions），自动补齐
   if ! docker exec zxt-db mariadb -uroot -p$DB_PASS judge_problems -e "SHOW TABLES LIKE 'problem_permissions'" 2>/dev/null | grep -q problem_permissions; then
     info "检测到数据库缺少新表，自动导入 init.sql 补齐..."
-    docker exec -i zxt-db mariadb --force -uroot -p$DB_PASS judge_problems < oj/init.sql
+    docker exec -i zxt-db mariadb --force -uroot -p$DB_PASS judge_problems < oj/init.sql 2>/dev/null
     ok "数据库表结构已补齐"
   fi
 fi
