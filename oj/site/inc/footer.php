@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded',function(){
     if(['hidden','checkbox','radio','file','submit','button','color','range','date','time'].indexOf(t)>=0) return;
     var par=el.parentElement;
     if(!par||par.querySelector('.float-label')) return;
+    // 已有独立 <label> 的输入框跳过（如筛选栏），避免文字重复
+    var hasLabel = par.querySelector('label') || (par.previousElementSibling && par.previousElementSibling.tagName==='LABEL');
+    if(hasLabel) return;
     var ph=el.getAttribute('placeholder')||'';
     if(!ph) return;
     var wrap=document.createElement('div');

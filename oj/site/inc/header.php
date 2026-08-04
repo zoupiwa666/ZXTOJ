@@ -107,6 +107,7 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 .float-wrap .float-label{
   position:absolute;left:13px;top:15px;color:#777;font-size:13px;pointer-events:none;margin:0;padding:0;
   text-transform:none;letter-spacing:0;transition:all .18s ease;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 26px);
 }
 .float-wrap.focused .float-label,.float-wrap.filled .float-label{
   top:5px;font-size:10px;color:#5af;letter-spacing:.5px;
