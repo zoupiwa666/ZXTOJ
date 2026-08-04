@@ -74,6 +74,7 @@ $me = currentUser();
 let currentFriend = null;
 let msgTimer = null;
 let expandedIds = new Set(); // 已展开的消息id（轮询刷新不丢失）
+let renderedIds = [];       // 已渲染的消息id（只追加，不整表重建）
 let lastFriendList = '';
 
 function avatarHtml(u, size){
@@ -149,7 +150,28 @@ async function loadMessages(){
   const d = await api('api/chat_messages.php?friend_id='+currentFriend, {});
   const box = document.getElementById('chatMsgs');
   const me = <?= $me['id'] ?>;
-  const html = (d.messages||[]).map(m => {
+  const msgs = d.messages||[];
+
+  // 无消息：显示占位
+  if(msgs.length===0){
+    if(box.querySelector('.cmsg')){ box.innerHTML='<div class="chat-empty">还没有消息，说点什么吧</div>'; renderedIds=[]; }
+    return;
+  }
+  // 消息被裁剪（最早的已渲染消息被清掉）→ 重建一次
+  if(renderedIds.length && msgs[0].id !== renderedIds[0]){
+    box.innerHTML='';
+    renderedIds=[];
+  }
+  // 只追加新消息（不重建整个列表，避免代码块/公式闪跳）
+  const known = new Set(renderedIds);
+  const fresh = msgs.filter(m=>!known.has(m.id));
+  if(!fresh.length) return;
+
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  const emptyEl = box.querySelector('.chat-empty');
+  if(emptyEl) emptyEl.remove();
+
+  fresh.forEach(m => {
     const mine = m.sender_id == me;
     const isLong = (m.content||'').length > 100;
     const expanded = expandedIds.has(m.id);
@@ -161,19 +183,26 @@ async function loadMessages(){
     } else {
       body = `<span class="cm-body md">${escapeHtml(m.content)}</span>`;
     }
-    return `<div class="cmsg ${mine?'mine':'theirs'}">${body}<span class="cm-t">${fmtTime(m.created_at)}</span></div>`;
-  }).join('') || '<div class="chat-empty">还没有消息，说点什么吧</div>';
-  box.innerHTML = html;
-  // 渲染 Markdown + KaTeX（与题面一致）
+    const div = document.createElement('div');
+    div.className = 'cmsg '+(mine?'mine':'theirs');
+    div.innerHTML = body + `<span class="cm-t">${fmtTime(m.created_at)}</span>`;
+    box.appendChild(div);
+    renderedIds.push(m.id);
+  });
+
+  // 只渲染新消息的 Markdown + KaTeX + 代码高亮
   box.querySelectorAll('.cm-body.md').forEach(el => {
+    if(el.dataset.rendered) return;
+    el.dataset.rendered = '1';
     el.innerHTML = marked.parse(el.textContent);
     if (typeof renderMathInElement === 'function') {
       renderMathInElement(el, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
     }
   });
-  // 高亮消息中的代码块（带语言的）
   if (window.highlightCodeBlocks) highlightCodeBlocks(box);
-  box.scrollTop = box.scrollHeight;
+
+  // 仅当用户接近底部时自动滚动，否则保留阅读位置
+  if(nearBottom) box.scrollTop = box.scrollHeight;
 }
 
 function expandMsg(id, btn){

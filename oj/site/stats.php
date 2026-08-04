@@ -40,7 +40,7 @@ require __DIR__ . '/inc/header.php';
 .data-table tr:hover td{background:#1a1a1a}
 .data-table a{color:#ccc;text-decoration:none}.data-table a:hover{color:#fff}
 .ac-badge{color:#25ad40;font-weight:700}
-.time-cell,.mem-cell{font-family:monospace;font-size:11px;color:#aaa}
+.time-cell,.mem-cell{font-family:Consolas,'Courier New',monospace;font-size:11px;color:#aaa}
 .submitted{color:#666;font-size:11px}
 .back{display:inline-block;padding:6px 16px;background:#2a2a2a;color:#ccc;text-decoration:none;font-size:12px;margin-bottom:16px}
 .back:hover{background:#3a3a3a;color:#fff}

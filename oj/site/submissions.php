@@ -41,7 +41,7 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
 .data-table a{color:#ccc;text-decoration:none}.data-table a:hover{color:#fff}
 .status-cell{font-weight:600;font-size:11px;white-space:nowrap}
 .status-score{font-size:13px;font-weight:700}
-.time-cell,.mem-cell{font-family:monospace;font-size:11px;color:#aaa}
+.time-cell,.mem-cell{font-family:Consolas,'Courier New',monospace;font-size:11px;color:#aaa}
 .submitted{color:#666;font-size:11px}
 .pager{display:flex;gap:6px;justify-content:center;margin-top:16px}
 .pager a,.pager span{padding:6px 14px;border:1px solid #222;color:#888;text-decoration:none;font-size:12px;background:#141414}

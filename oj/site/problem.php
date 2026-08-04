@@ -49,7 +49,7 @@ require __DIR__ . '/inc/header.php';
 .sample-row{display:flex;gap:10px;margin-bottom:8px}
 .sample-box{flex:1;background:#141414;border:1px solid #222;padding:12px;position:relative}
 .sample-box h3{font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px}
-.sample-box pre{font-family:monospace;font-size:12px;color:#bbb;white-space:pre-wrap;word-break:break-all;line-height:1.5}
+.sample-box pre{font-family:Consolas,'Courier New',monospace;font-size:12px;color:#bbb;white-space:pre-wrap;word-break:break-all;line-height:1.5}
 .copy-btn{position:absolute;top:4px;right:4px;padding:2px 10px;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;font-size:10px;cursor:pointer;opacity:0;transition:opacity .15s;font-family:inherit}
 .sample-box:hover .copy-btn{opacity:1}
 .copy-btn:hover{background:#2a4a7c;color:#8cf}

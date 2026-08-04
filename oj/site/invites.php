@@ -25,7 +25,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}
 th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #111}
 th{color:#999;font-size:11px;font-weight:400;text-transform:uppercase;letter-spacing:1px}
 .green{color:#0c0}.red{color:#c00}.yellow{color:#c90}
-.code-cell{font-family:monospace;font-size:11px}
+.code-cell{font-family:Consolas,'Courier New',monospace;font-size:11px}
 </style>
 <h1 class="page-title">Invites</h1>
 <?php if($msg):?><div style="padding:8px 12px;border:1px solid #0c0;color:#0c0;margin-bottom:16px;font-size:12px"><?=$msg?></div><?php endif?>

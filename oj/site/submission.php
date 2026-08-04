@@ -50,7 +50,7 @@ require __DIR__ . '/inc/header.php';
 .s-MLE{color:#c0c}.s-OLE{color:#09c}.s-CE{color:#c60}.s-judging{color:#09f}.s-waiting{color:#999}
 .code-block{background:#1a1a1a;border:1px solid #222;padding:14px 16px;margin-bottom:24px;position:relative}
 .code-block .lang-tag{position:absolute;top:0;right:0;background:#222;color:#999;font-size:10px;padding:2px 10px;letter-spacing:1px}
-.code-block pre{font-family:monospace;font-size:12px;color:#aaa;white-space:pre-wrap;line-height:1.5;margin:0}
+.code-block pre{font-family:Consolas,'Courier New',monospace;font-size:12px;color:#aaa;white-space:pre-wrap;line-height:1.5;margin:0}
 
 .tc-list{}
 .tc-item{border:1px solid #222;margin-bottom:2px}
@@ -70,7 +70,7 @@ require __DIR__ . '/inc/header.php';
 .tc-body .row{display:flex;gap:16px;margin-bottom:8px}
 .tc-body .row>div{flex:1}
 .tc-body label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;display:block}
-.tc-body pre{font-family:monospace;font-size:12px;color:#aaa;background:#000;border:1px solid #222;padding:8px 10px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;line-height:1.4}
+.tc-body pre{font-family:Consolas,'Courier New',monospace;font-size:12px;color:#aaa;background:#000;border:1px solid #222;padding:8px 10px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;line-height:1.4}
 .tc-body .error-msg{color:#c00;font-size:11px;margin-top:6px;white-space:pre-wrap}
 </style>
 
