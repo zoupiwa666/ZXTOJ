@@ -97,7 +97,8 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 .ubadge-name:hover{color:#fff}</style>
 <style>
 /* ===== 高级浮动输入框（OJ 风格）===== */
-.float-wrap{position:relative;margin-bottom:14px}
+.float-wrap{position:relative;margin-bottom:14px;flex:1;min-width:0}
+.float-wrap.in-flex{margin-bottom:0}
 .float-wrap input,.float-wrap textarea,.float-wrap select{
   width:100%;padding:20px 12px 8px;background:#1a1a1a;border:1px solid #333;border-radius:8px;
   color:#ddd;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s;font-family:inherit;

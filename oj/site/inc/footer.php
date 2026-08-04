@@ -9,12 +9,10 @@ document.addEventListener('DOMContentLoaded',function(){
     if(['hidden','checkbox','radio','file','submit','button','color','range','date','time'].indexOf(t)>=0) return;
     var par=el.parentElement;
     if(!par||par.querySelector('.float-label')) return;
-    // 跳过 flex 布局内的输入框，避免破坏布局（如聊天输入行、路径导入行）
-    if(getComputedStyle(par).display==='flex') return;
     var ph=el.getAttribute('placeholder')||'';
     if(!ph) return;
     var wrap=document.createElement('div');
-    wrap.className='float-wrap';
+    wrap.className='float-wrap'+(getComputedStyle(par).display==='flex'?' in-flex':'');
     par.insertBefore(wrap,el);
     wrap.appendChild(el);
     var lab=document.createElement('label');
