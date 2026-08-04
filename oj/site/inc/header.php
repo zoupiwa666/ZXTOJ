@@ -95,6 +95,28 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 .ubadge .uavatar-char{background:#2a3a5c;color:#fff;text-align:center;font-weight:700;border-radius:50%;display:inline-block;flex-shrink:0}
 .ubadge-name{color:#ccc;text-decoration:none}
 .ubadge-name:hover{color:#fff}</style>
+<style>
+/* ===== 高级浮动输入框（OJ 风格）===== */
+.float-wrap{position:relative;margin-bottom:14px}
+.float-wrap input,.float-wrap textarea,.float-wrap select{
+  width:100%;padding:20px 12px 8px;background:#1a1a1a;border:1px solid #333;border-radius:8px;
+  color:#ddd;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s;font-family:inherit;
+}
+.float-wrap textarea{resize:vertical;min-height:60px}
+.float-wrap .float-label{
+  position:absolute;left:13px;top:15px;color:#777;font-size:13px;pointer-events:none;margin:0;padding:0;
+  text-transform:none;letter-spacing:0;transition:all .18s ease;
+}
+.float-wrap.focused .float-label,.float-wrap.filled .float-label{
+  top:5px;font-size:10px;color:#5af;letter-spacing:.5px;
+}
+.float-wrap input:focus,.float-wrap textarea:focus,.float-wrap select:focus{
+  border-color:#5af;background:#1f1f1f;box-shadow:0 0 0 3px rgba(90,170,255,.12);
+}
+/* 基础输入框升级（非浮动场景） */
+input,textarea,select{border-radius:8px;transition:border-color .2s,box-shadow .2s,background .2s}
+input:focus,textarea:focus,select:focus{border-color:#5af;box-shadow:0 0 0 3px rgba(90,170,255,.12);background:#1f1f1f}
+</style>
 <link rel="stylesheet" href="assets/highlight.css"><style>.hljs-ln-numbers{text-align:right;color:#444;border-right:1px solid #222;padding-right:7px;margin-right:7px;user-select:none;font-size:inherit!important;line-height:inherit!important}.hljs-ln td{padding:0!important;background:transparent!important}.hljs-ln tr:hover{background:#0f0f0f}.hljs-ln tr:hover td{background:transparent!important}.hljs[data-highlighted],.hljs [data-highlighted]{font-size:inherit!important;line-height:inherit!important;background:transparent!important}.hljs-ln-code{padding-left:0!important}code.hljs[data-highlighted]{display:contents!important;background:transparent!important;padding:0!important}.hljs,.hljs *,.hljs-ln,.hljs-ln *,.hljs-ln-line{font-family:Consolas,'Courier New',monospace!important;font-size:12px!important;line-height:1.5!important}
 .hljs-ln td,.hljs-ln th{padding:2px 0!important;border:none!important}
 .hljs-ln-numbers{-webkit-user-select:none;user-select:none}</style></head></head>

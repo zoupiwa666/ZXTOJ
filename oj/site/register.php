@@ -31,6 +31,12 @@ body{font-family:'SF Mono','Consolas',monospace;background:#111;color:#ccc;min-h
 .box .ok{color:#0c0;font-size:11px;margin-bottom:8px;text-align:center}
 .box .links{margin-top:16px;text-align:center;font-size:11px}
 .box .links a{color:#999;text-decoration:none}.box .links a:hover{color:#fff}
+
+.float-wrap{position:relative;margin-bottom:14px}
+.float-wrap input{width:100%;padding:20px 12px 8px;background:#111;border:1px solid #333;border-radius:8px;color:#ccc;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s;font-family:inherit;margin-bottom:0}
+.float-wrap .float-label{position:absolute;left:13px;top:15px;color:#777;font-size:13px;pointer-events:none;transition:all .18s ease}
+.float-wrap.focused .float-label,.float-wrap.filled .float-label{top:5px;font-size:10px;color:#5af;letter-spacing:.5px}
+.float-wrap input:focus{border-color:#5af;box-shadow:0 0 0 3px rgba(90,170,255,.12);background:#181818}
 </style></head><body>
 <div class="box">
 <div class="title">ZXT SUPER OJ</div>
@@ -45,4 +51,21 @@ body{font-family:'SF Mono','Consolas',monospace;background:#111;color:#ccc;min-h
 </form>
 <?php endif?>
 <div class="links"><a href="login.php">登录</a></div>
-</div></body></html>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.box input[placeholder]').forEach(function(el){
+    var par=el.parentElement; if(!par||par.querySelector('.float-label'))return;
+    var ph=el.getAttribute('placeholder')||''; if(!ph)return;
+    var wrap=document.createElement('div'); wrap.className='float-wrap';
+    par.insertBefore(wrap,el); wrap.appendChild(el);
+    var lab=document.createElement('label'); lab.className='float-label'; lab.textContent=ph; wrap.appendChild(lab);
+    el.removeAttribute('placeholder');
+    if(el.value)wrap.classList.add('filled');
+    el.addEventListener('input',function(){wrap.classList.toggle('filled',!!el.value);});
+    el.addEventListener('focus',function(){wrap.classList.add('focused');});
+    el.addEventListener('blur',function(){wrap.classList.remove('focused');});
+  });
+});
+</script>
+</body></html>

@@ -2,6 +2,34 @@
 <script src="assets/highlight.min.js"></script>
 <script src="assets/highlight-line-numbers.min.js"></script>
 <script>
+// 自动把带 placeholder 的输入框升级为浮动标签样式（OJ 风格）
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function(el){
+    var t=(el.type||'').toLowerCase();
+    if(['hidden','checkbox','radio','file','submit','button','color','range','date','time'].indexOf(t)>=0) return;
+    var par=el.parentElement;
+    if(!par||par.querySelector('.float-label')) return;
+    // 跳过 flex 布局内的输入框，避免破坏布局（如聊天输入行、路径导入行）
+    if(getComputedStyle(par).display==='flex') return;
+    var ph=el.getAttribute('placeholder')||'';
+    if(!ph) return;
+    var wrap=document.createElement('div');
+    wrap.className='float-wrap';
+    par.insertBefore(wrap,el);
+    wrap.appendChild(el);
+    var lab=document.createElement('label');
+    lab.className='float-label';
+    lab.textContent=ph;
+    wrap.appendChild(lab);
+    el.removeAttribute('placeholder');
+    if(el.value) wrap.classList.add('filled');
+    el.addEventListener('input',function(){wrap.classList.toggle('filled',!!el.value);});
+    el.addEventListener('focus',function(){wrap.classList.add('focused');});
+    el.addEventListener('blur',function(){wrap.classList.remove('focused');});
+  });
+});
+</script>
+<script>
 // 可复用的代码高亮函数：高亮范围内所有带语言的代码块（含动态渲染的，如聊天）
 function highlightCodeBlocks(scope){
  scope=(scope&&scope.querySelectorAll)?scope:document;
