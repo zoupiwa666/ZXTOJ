@@ -4,8 +4,8 @@
 #  生成配置（DB_HOST 环境变量指向 zxt-db）→ php-fpm → nginx
 # =====================================================
 
-# 确保题目数据目录存在且 oj(www-data) 可写
-mkdir -p /data/problems
+# 确保题目数据/头像上传目录存在且 oj(www-data) 可写
+mkdir -p /data/problems /var/www/oj/uploads/avatars
 chown -R www-data:www-data /data/problems /var/www/oj/uploads 2>/dev/null
 
 # 生成配置（DB_HOST/DB_PASS/JUDGE_URL 来自环境变量）

@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /var/www/oj
 COPY site/ /var/www/oj/
+# 构建时确保头像上传目录存在（部署后 bind-mount 前先建好）
+RUN mkdir -p /var/www/oj/uploads/avatars && chown -R www-data:www-data /var/www/oj/uploads
 COPY config_gen.php /var/www/oj/config_gen.php
 COPY init.sql /var/www/oj/init.sql
 COPY nginx.conf /etc/nginx/sites-enabled/default
