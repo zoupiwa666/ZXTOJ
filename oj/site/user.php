@@ -64,8 +64,27 @@ require __DIR__ . '/inc/header.php';
     <?php else: ?><div class="avatar-default"><?=strtoupper(substr($username,0,1))?></div><?php endif ?>
   </div>
   <div class="profile-info">
-    <h1><?=htmlspecialchars($username)?><?php if ($isOwner): ?><a href="profile.php" class="edit-link">编辑</a><?php endif ?></h1>
+    <h1><span style="color:<?=userColor($profile['role'])?>"><?=htmlspecialchars($username)?></span><?php if ($profile['tag']): ?><span class="utag" style="background:<?=userColor($profile['role'])?>;color:#fff"><?=htmlspecialchars($profile['tag'])?></span><?php endif; ?><?php if ($isOwner): ?><a href="profile.php" class="edit-link">编辑</a><?php endif ?></h1>
     <div class="motto"><?=htmlspecialchars($profile['motto'])?></div>
+    <?php
+    $canSetTag = false;
+    if (isLoggedIn()) {
+        $meTag = currentUser();
+        $rlTag = ['super_admin'=>3,'admin'=>2,'user'=>1];
+        if (in_array($meTag['role'], ['super_admin','admin'])) {
+            $myL = $rlTag[$meTag['role']]; $tL = $rlTag[$profile['role']] ?? 1;
+            if ($meTag['username'] === $username || $tL < $myL) $canSetTag = true;
+        }
+    }
+    ?>
+    <?php if ($canSetTag): ?>
+    <div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <input id="tagInput" placeholder="设置标签(最多5字)" value="<?=htmlspecialchars($profile['tag']??'')?>" maxlength="5" style="width:130px;padding:5px 8px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#ddd;font-size:12px;outline:none">
+      <button class="btn btn-sm" onclick="setTag()">设置</button>
+      <button class="btn btn-sm" onclick="clearTag()" <?=($profile['tag']??'')?'':'disabled'?>>清除</button>
+      <span id="tagMsg" style="font-size:11px;color:#999"></span>
+    </div>
+    <?php endif; ?>
     <div class="profile-stats">
       <span>提交数: <b><?=$totalSubs?></b></span>
       <span>通过: <b><?=$acSubs?></b></span>
@@ -106,4 +125,19 @@ require __DIR__ . '/inc/header.php';
 <div class="empty">暂无提交.</div>
 <?php endif ?>
 
+<script>
+async function setTag(){
+  const inp=document.getElementById('tagInput'), msg=document.getElementById('tagMsg');
+  const tag=inp.value.trim();
+  if(tag.length>5){ msg.textContent='最多5个字'; return; }
+  const fd=new FormData(); fd.append('username',<?=json_encode($username)?>); fd.append('tag',tag);
+  try{
+    const r=await fetch('api/set_tag.php',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){ msg.textContent=d.message; setTimeout(()=>location.reload(),500); }
+    else msg.textContent=d.message||'失败';
+  }catch(e){ msg.textContent='失败'; }
+}
+async function clearTag(){ const inp=document.getElementById('tagInput'); if(inp) inp.value=''; await setTag(); }
+</script>
 <?php require __DIR__ . '/inc/footer.php'; ?>

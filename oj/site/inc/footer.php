@@ -26,7 +26,9 @@
           ? '<img class="uc-avatar" src="'+esc(d.avatar)+'">'
           : '<span class="uc-avatar" style="display:flex;align-items:center;justify-content:center;color:#5af;font-size:17px;font-weight:700">'+esc(ch)+'</span>';
         var role=d.role==='super_admin'?'<span class="uc-role">SA</span>':(d.role==='admin'?'<span class="uc-role">AD</span>':'');
-        c.innerHTML='<div class="uc-top">'+av+'<div class="uc-name">'+esc(d.username)+role+'</div></div>'
+        var color=(d.role==='super_admin'||d.role==='admin')?'#a855f7':'#b0815a';
+        var tagHtml=d.tag?'<span style="background:'+color+';color:#fff;font-size:9px;padding:0 5px;border-radius:3px;margin-left:5px;vertical-align:middle">'+esc(d.tag)+'</span>':'';
+        c.innerHTML='<div class="uc-top">'+av+'<div class="uc-name" style="color:'+color+'">'+esc(d.username)+role+tagHtml+'</div></div>'
           +'<div class="uc-motto">'+(d.motto?esc(d.motto):'这个人很懒，什么都没写~')+'</div>'
           +'<div class="uc-tip">点击查看主页 →</div>';
         c.dataset.url=a.href;

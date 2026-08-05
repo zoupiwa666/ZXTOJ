@@ -4,6 +4,9 @@ require_once __DIR__ . '/auth.php';
 $currentUser = isLoggedIn() ? currentUser() : null;
 $currentPage = basename($_SERVER['PHP_SELF']);
 
+// 确保用户标签字段存在（幂等）
+try { $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS tag VARCHAR(5) DEFAULT NULL"); } catch (Exception $e) {}
+
 // 全站用户头像 + 用户名徽章（用户名左边显示头像）
 function userAvatar($username, $avatar = null, $size = 20) {
     if ($avatar === null || $avatar === '') {
@@ -21,9 +24,28 @@ function userAvatar($username, $avatar = null, $size = 20) {
     }
     return '<span class="uavatar uavatar-char" style="width:'.$size.'px;height:'.$size.'px;line-height:'.$size.'px;font-size:'.max(9, intval($size*0.5)).'px">'.htmlspecialchars(strtoupper(mb_substr($username,0,1))).'</span>';
 }
+// 用户名颜色：管理员紫色，普通用户棕色
+function userColor(string $role): string {
+    return in_array($role, ['super_admin', 'admin']) ? '#a855f7' : '#b0815a';
+}
 function userBadge($username, $avatar = null, $size = 20) {
+    static $cache = [];
+    global $pdo;
+    if (!isset($cache[$username])) {
+        $s = $pdo->prepare("SELECT avatar, role, tag FROM users WHERE username=?");
+        $s->execute([$username]);
+        $cache[$username] = $s->fetch() ?: null;
+    }
+    $info = $cache[$username];
+    $role = $info['role'] ?? 'user';
+    $tag  = $info['tag'] ?? '';
+    $color = userColor($role);
+    $tagHtml = $tag !== '' && $tag !== null
+        ? ' <span class="utag" style="background:'.$color.';color:#fff">'.htmlspecialchars($tag).'</span>'
+        : '';
     return '<span class="ubadge">'.userAvatar($username, $avatar, $size)
-        .'<a class="ubadge-name" href="user.php?name='.urlencode($username).'">'.htmlspecialchars($username).'</a></span>';
+        .'<a class="ubadge-name" href="user.php?name='.urlencode($username).'" style="color:'.$color.'">'.htmlspecialchars($username).'</a>'
+        .$tagHtml.'</span>';
 }
 ?>
 <!DOCTYPE html>
@@ -95,6 +117,7 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 .ubadge .uavatar-char{background:#2a3a5c;color:#fff;text-align:center;font-weight:700;border-radius:50%;display:inline-block;flex-shrink:0}
 .ubadge-name{color:#ccc;text-decoration:none}
 .ubadge-name:hover{color:#fff}
+.utag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;line-height:1.5;margin-left:5px;vertical-align:middle;font-weight:400;letter-spacing:.5px;white-space:nowrap}
 /* 用户名片悬停卡片 */
 .ucard{position:fixed;z-index:9999;background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:12px 14px;min-width:180px;max-width:240px;box-shadow:0 8px 28px rgba(0,0,0,.55);opacity:0;transform:translateY(6px) scale(.95);transition:opacity .18s ease,transform .18s ease;pointer-events:none;cursor:pointer}
 .ucard.show{opacity:1;transform:none;pointer-events:auto}
