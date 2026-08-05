@@ -46,13 +46,18 @@
     if(!card) return;
     setTimeout(function(){ if(card){ card.classList.remove('show'); card.style.display='none'; } },250);
   }
+  // 立即隐藏（滚轮触发，事件一出现就消失）
+  function hideCardNow(){
+    clearTimeout(timer);
+    if(card){ card.classList.remove('show'); card.style.display='none'; }
+  }
   document.addEventListener('mouseover',function(e){
     var a=e.target.closest?e.target.closest('a[href*="user.php?name="]'):null;
     if(a){ showCard(a); }
     else if(!e.target.closest||!e.target.closest('.ucard')){ hideCard(); }
   });
   // 鼠标滚轮滚动时立即隐藏名片
-  document.addEventListener('wheel',function(){ hideCard(); },{passive:true});
+  document.addEventListener('wheel',function(){ hideCardNow(); },{passive:true});
 })();
 </script>
 <script>
