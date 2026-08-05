@@ -7,6 +7,8 @@ $me = currentUser();
 $perm = article_perm($me['username']);
 $isAdmin = isAdmin();
 $id = intval($_GET['id'] ?? 0);
+// 从题解区"提交题解"进入时预填题目编号
+$preProblem = preg_replace('/[^a-zA-Z0-9_-]/', '', $_GET['problem'] ?? '');
 $art = null;
 if ($id > 0) {
     $s = $pdo->prepare("SELECT * FROM articles WHERE id=?"); $s->execute([$id]);
@@ -46,8 +48,8 @@ if ($id > 0) {
     <?php if ($isAdmin): ?>
     <label class="chk"><input type="checkbox" id="aAnn" <?=($art['is_announcement']??0)?'checked':''?>> 设为公告（置顶）</label>
     <?php endif; ?>
-    <label class="chk"><input type="checkbox" id="aSol" <?=($art['is_solution']??0)?'checked':''?> onchange="solNote()"> 添加为题解</label>
-    <input id="solPid" placeholder="题目编号 (如 P1000)" value="<?=htmlspecialchars($art['solution_problem']??'')?>" style="width:140px;display:inline-block;padding:6px 10px">
+    <label class="chk"><input type="checkbox" id="aSol" <?=(($art['is_solution']??0)||$preProblem)?'checked':''?> onchange="solNote()"> 添加为题解</label>
+    <input id="solPid" placeholder="题目编号 (如 P1000)" value="<?=htmlspecialchars(($art['solution_problem'] ?? $preProblem) ?? '')?>" style="width:140px;display:inline-block;padding:6px 10px">
     <span id="solNote" style="font-size:11px;color:#888"></span>
   </div>
   <div style="display:flex;gap:8px;align-items:center">

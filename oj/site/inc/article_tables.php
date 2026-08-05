@@ -43,6 +43,8 @@ function article_ensure_tables(): void {
         $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS is_solution TINYINT(1) DEFAULT 0");
         $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS solution_problem VARCHAR(20) DEFAULT NULL");
         $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS solution_status VARCHAR(10) DEFAULT NULL");
+        // 题目是否允许提交新题解（1=允许, 0=关闭，管理员可切）
+        $pdo->exec("ALTER TABLE problems ADD COLUMN IF NOT EXISTS solution_open TINYINT(1) DEFAULT 1");
     } catch (Exception $e) {}
 }
 article_ensure_tables();
