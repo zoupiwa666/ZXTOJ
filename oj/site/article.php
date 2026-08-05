@@ -116,9 +116,11 @@ async function vote(val){
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function renderCmt(c){
   const av = c.avatar ? '<img src="'+c.avatar+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle">' : '';
+  const color = (c.role==='super_admin'||c.role==='admin') ? '#a855f7' : '#b0815a';
+  const tag = c.tag ? '<span style="background:'+color+';color:#fff;font-size:9px;padding:0 5px;border-radius:3px;margin-left:5px;vertical-align:middle">'+escapeHtml(c.tag)+'</span>' : '';
   return '<div style="background:#141414;border:1px solid #222;border-radius:8px;padding:12px 14px;margin-bottom:8px">'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+av
-    +'<a href="user.php?name='+encodeURIComponent(c.username)+'" style="color:#5af;text-decoration:none;font-size:12px">'+c.username+'</a>'
+    +'<a href="user.php?name='+encodeURIComponent(c.username)+'" style="color:'+color+';text-decoration:none;font-size:12px;font-weight:600">'+escapeHtml(c.username)+'</a>'+tag
     +'<span style="color:#666;font-size:10px;margin-left:auto">'+c.created_at+'</span></div>'
     +'<div class="cmt-body" style="font-size:13px;line-height:1.7;word-break:break-word">'+escapeHtml(c.content)+'</div></div>';
 }

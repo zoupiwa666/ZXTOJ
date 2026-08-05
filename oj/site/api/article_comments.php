@@ -18,7 +18,7 @@ $totalPages = max(1, intval(ceil($total / $per)));
 $page = min($page, $totalPages);
 $off = ($page - 1) * $per;
 
-$st = $pdo->prepare("SELECT c.*, u.avatar FROM article_comments c LEFT JOIN users u ON u.username = c.username COLLATE utf8mb4_uca1400_ai_ci WHERE c.article_id=? ORDER BY c.id DESC LIMIT $per OFFSET $off");
+$st = $pdo->prepare("SELECT c.*, u.avatar, u.role, u.tag FROM article_comments c LEFT JOIN users u ON u.username = c.username COLLATE utf8mb4_uca1400_ai_ci WHERE c.article_id=? ORDER BY c.id DESC LIMIT $per OFFSET $off");
 $st->execute([$aid]);
 $cmts = $st->fetchAll();
 foreach ($cmts as &$cm) { $cm['content'] = render_mentions($cm['content']); }
