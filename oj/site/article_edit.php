@@ -46,6 +46,9 @@ if ($id > 0) {
     <?php if ($isAdmin): ?>
     <label class="chk"><input type="checkbox" id="aAnn" <?=($art['is_announcement']??0)?'checked':''?>> 设为公告（置顶）</label>
     <?php endif; ?>
+    <label class="chk"><input type="checkbox" id="aSol" <?=($art['is_solution']??0)?'checked':''?> onchange="solNote()"> 添加为题解</label>
+    <input id="solPid" placeholder="题目编号 (如 P1000)" value="<?=htmlspecialchars($art['solution_problem']??'')?>" style="width:140px;display:inline-block;padding:6px 10px">
+    <span id="solNote" style="font-size:11px;color:#888"></span>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button class="btn" onclick="saveArticle()">保存</button>
@@ -66,6 +69,12 @@ function switchTab(tab){
   if(isPrev) renderPreview();
 }
 function schedulePreview(){ clearTimeout(prevTimer); prevTimer=setTimeout(renderPreview, 500); }
+function solNote(){
+  const note=document.getElementById('solNote');
+  const on=document.getElementById('aSol').checked;
+  if(!on){ note.textContent=''; return; }
+  note.textContent = <?=$isAdmin?'"管理员发布题解，直接通过审核"':'"提交后需管理员审核"'; ?>;
+}
 function renderPreview(){
   const el=document.getElementById('aPreview');
   const md=document.getElementById('aContent').value;
@@ -86,6 +95,8 @@ async function saveArticle(){
   fd.append('content',document.getElementById('aContent').value);
   fd.append('is_public',document.getElementById('aPublic')&&document.getElementById('aPublic').checked?'1':'0');
   fd.append('is_announcement',document.getElementById('aAnn')&&document.getElementById('aAnn').checked?'1':'0');
+  fd.append('is_solution',document.getElementById('aSol').checked?'1':'0');
+  fd.append('solution_problem',document.getElementById('solPid').value.trim());
   try{
     const r=await fetch('api/article_save.php',{method:'POST',body:fd});
     const d=await r.json();

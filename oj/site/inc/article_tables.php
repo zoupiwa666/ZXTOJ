@@ -39,6 +39,10 @@ function article_ensure_tables(): void {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             KEY idx_article (article_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // 题解字段（MariaDB 支持 ADD COLUMN IF NOT EXISTS）
+        $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS is_solution TINYINT(1) DEFAULT 0");
+        $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS solution_problem VARCHAR(20) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS solution_status VARCHAR(10) DEFAULT NULL");
     } catch (Exception $e) {}
 }
 article_ensure_tables();

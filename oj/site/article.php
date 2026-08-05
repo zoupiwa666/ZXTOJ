@@ -55,7 +55,17 @@ require __DIR__.'/inc/header.php';
     <?= $art['is_announcement'] ? '<span style="color:#ffab00;font-size:12px">📢公告</span> ' : '' ?><?=htmlspecialchars($art['title'])?>
     <span style="font-size:11px;color:<?=$art['is_public']?'#0c0':'#c90'?>;margin-left:8px"><?=$art['is_public']?'公开':'私密'?></span>
   </h1>
-  <div style="display:flex;gap:8px">
+  <div style="display:flex;gap:8px;align-items:center">
+    <?php if ($art['is_solution']): ?>
+      <span style="font-size:11px;color:#5af;border:1px solid #2a5a8c;background:#1a3a5c;padding:3px 10px">📘 题解 <?=htmlspecialchars($art['solution_problem'])?></span>
+      <span style="font-size:11px;color:<?=$art['solution_status']==='approved'?'#0c0':($art['solution_status']==='rejected'?'#f66':'#c90')?>">
+        <?=$art['solution_status']==='approved'?'已通过':($art['solution_status']==='rejected'?'已拒绝':'待审核')?>
+      </span>
+      <?php if (isAdmin() && $art['solution_status']==='pending'): ?>
+      <button class="btn btn-sm" style="color:#0c0" onclick="reviewSol('approve')">通过</button>
+      <button class="btn btn-sm btn-danger" onclick="reviewSol('reject')">拒绝</button>
+      <?php endif; ?>
+    <?php endif; ?>
     <?php if ($canEdit): ?><a class="btn btn-sm" href="article_edit.php?id=<?=$id?>">编辑</a><?php endif; ?>
     <?php if ($isAdmin = isAdmin() || $art['author']===$me['username']): ?>
     <button class="btn btn-sm btn-danger" onclick="delArticle()">删除</button>
@@ -140,6 +150,12 @@ async function postComment(){
   else msg.textContent = d.message||'评论失败';
 }
 loadComments(1);
+async function reviewSol(action){
+  const fd=new FormData(); fd.append('id',<?=$id?>); fd.append('action',action);
+  const r=await fetch('api/article_review.php',{method:'POST',body:fd});
+  const d=await r.json();
+  alert(d.message||'操作完成'); location.reload();
+}
 async function delArticle(){
   if(!confirm('确定删除这篇文章？')) return;
   const fd=new FormData(); fd.append('id',<?=$id?>);

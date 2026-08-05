@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/inc/config.php';
+require_once __DIR__ . '/inc/article_tables.php';
 require __DIR__ . '/inc/auth.php';
 requireLogin();
 
@@ -32,6 +33,13 @@ $s->execute([$uname, $pid]); $acSub = $s->fetch();
 $pageTitle = $problem['title'] . ' - Zxt Super OJ';
 $colorMap = ['AC'=>'#25ad40','WA'=>'#ff4f4f','TLE'=>'#ffab00','RE'=>'#f8603a','MLE'=>'#d500f9','OLE'=>'#0091ea','CE'=>'#ff9100','SE'=>'#999','judging'=>'#09f','waiting'=>'#666'];
 require __DIR__ . '/inc/header.php';
+
+// 查找该题已审核通过的题解
+$sol = null;
+try {
+    $ss = $pdo->prepare("SELECT id, title, author FROM articles WHERE solution_problem=? AND is_solution=1 AND solution_status='approved' ORDER BY id DESC LIMIT 1");
+    $ss->execute([$pid]); $sol = $ss->fetch();
+} catch (Exception $e) {}
 ?>
 <style>
 .problem-layout{max-width:800px;margin:0 auto}
@@ -74,7 +82,11 @@ require __DIR__ . '/inc/header.php';
       <?php elseif ($lastSub): $st = $lastSub['status']; $color = $colorMap[$st] ?? '#999'; ?>
       <a href="submission.php?id=<?=$lastSub['id']?>" title="查看提交记录" class="last-status" style="color:<?=$color?>;border-color:<?=$color?>"><?=$st?> <?=intval($lastSub['score'])?></a>
       <?php endif; ?>
-      <h1 style="font-size:22px;color:#fff;font-weight:400;margin:0"><?=htmlspecialchars($problem['title'])?></h1>
+      <h1 style="font-size:22px;color:#fff;font-weight:400;margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px"><?=htmlspecialchars($problem['title'])?>
+  <?php if ($sol): ?>
+  <a href="article.php?id=<?=$sol['id']?>" style="display:inline-flex;align-items:center;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;padding:5px 16px;font-size:13px;font-weight:600;letter-spacing:1px;text-decoration:none">📘 题解</a>
+  <?php endif; ?>
+</h1>
     </div>
     <div class="meta" style="margin-top:10px">
       <span>时限: <?=$problem['time_limit']?>s</span>

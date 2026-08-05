@@ -20,6 +20,36 @@ $isAdmin = isAdmin();
 </div>
 
 <?php
+// 管理员：待审核题解
+$pendingSols = [];
+if ($isAdmin) {
+    $pendingSols = $pdo->query("SELECT * FROM articles WHERE is_solution=1 AND solution_status='pending' ORDER BY id DESC")->fetchAll();
+}
+?>
+<?php if ($pendingSols): ?>
+<div class="card" style="border-left:3px solid #c90;margin-bottom:16px">
+  <div style="font-size:13px;color:#c90;margin-bottom:8px;letter-spacing:1px">⏳ 待审核题解 (<?=count($pendingSols)?>)</div>
+  <?php foreach ($pendingSols as $ps): ?>
+  <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1c1c1c;font-size:12px">
+    <a href="article.php?id=<?=$ps['id']?>" style="color:#5af;text-decoration:none"><?=htmlspecialchars($ps['title'])?></a>
+    <span style="color:#888">→ 题目 <?=htmlspecialchars($ps['solution_problem'])?> · <?=htmlspecialchars($ps['author'])?></span>
+    <span style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-sm" style="color:#0c0" onclick="reviewSol(<?=$ps['id']?>,'approve')">通过</button>
+      <button class="btn btn-sm btn-danger" onclick="reviewSol(<?=$ps['id']?>,'reject')">拒绝</button>
+    </span>
+  </div>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
+<script>
+async function reviewSol(id, action){
+  const fd=new FormData(); fd.append('id',id); fd.append('action',action);
+  const r=await fetch('api/article_review.php',{method:'POST',body:fd});
+  const d=await r.json();
+  alert(d.message||'操作完成'); location.reload();
+}
+</script>
+<?php
 // 公告（人人可见，置顶）
 $anns = $pdo->query("SELECT * FROM articles WHERE is_announcement=1 ORDER BY id DESC LIMIT 10")->fetchAll();
 // 公开文章（需查看权限） + 我的私密文章
