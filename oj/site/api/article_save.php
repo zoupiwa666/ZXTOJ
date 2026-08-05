@@ -12,7 +12,15 @@ $perm = article_perm($me['username']);
 $isAdmin = isAdmin();
 $id = intval($_POST['id'] ?? 0);
 $title = sanitize_name($_POST['title'] ?? '', 200);
-$content = sanitize_text($_POST['content'] ?? '', 100000);
+// 普通用户内容上限 100KB，管理员放宽到 1MB
+if ($isAdmin) {
+    $content = sanitize_text($_POST['content'] ?? '', 1024*1024);
+} else {
+    if (strlen($_POST['content'] ?? '') > 100*1024) {
+        echo json_encode(['ok'=>false,'message'=>'文章内容不能超过100KB']); exit;
+    }
+    $content = sanitize_text($_POST['content'] ?? '', 100*1024);
+}
 
 if ($id > 0) {
     // 更新

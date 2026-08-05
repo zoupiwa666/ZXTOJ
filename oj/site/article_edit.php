@@ -17,6 +17,10 @@ if ($id > 0) {
     if (!$isAdmin && $perm['can_publish'] != 1) die('你没有被授权发布文章');
 }
 ?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"></script>
+<script src="assets/marked.min.js"></script>
 <style>
 .ae-box{max-width:800px}
 .ae-box input,.ae-box textarea{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#ddd;font-size:13px;outline:none;padding:10px 12px;transition:border-color .2s,box-shadow .2s;font-family:inherit}
@@ -28,7 +32,13 @@ if ($id > 0) {
 <h1 class="page-title"><?= $id>0 ? '编辑文章 #'.$id : '发布文章' ?></h1>
 <div class="ae-box">
   <input id="aTitle" placeholder="文章标题" value="<?=htmlspecialchars($art['title'] ?? '')?>" style="margin-bottom:10px">
-  <textarea id="aContent" rows="18" placeholder="支持 Markdown（- 列表缩进、**加粗**、$公式$、代码块...）"><?=htmlspecialchars($art['content'] ?? '')?></textarea>
+  <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+    <button class="btn btn-sm" id="tabEdit" onclick="switchTab('edit')" style="background:#1a3a5c;color:#5af">✏️ 编辑</button>
+    <button class="btn btn-sm" id="tabPrev" onclick="switchTab('prev')">👁️ 预览</button>
+    <span style="font-size:11px;color:#888;margin-left:auto">Markdown + 公式 + 代码高亮，实时预览</span>
+  </div>
+  <textarea id="aContent" rows="18" placeholder="支持 Markdown（- 列表缩进、**加粗**、$公式$、代码块...）" oninput="schedulePreview()"><?=htmlspecialchars($art['content'] ?? '')?></textarea>
+  <div id="aPreview" class="md" style="display:none;background:#141414;border:1px solid #222;border-radius:8px;padding:16px;min-height:300px;line-height:1.8"></div>
   <div style="margin:10px 0">
     <?php if ($id>0 || $isAdmin): ?>
     <label class="chk"><input type="checkbox" id="aPublic" <?=($art['is_public']??0)?'checked':''?>> 设为公开</label>
@@ -44,6 +54,28 @@ if ($id > 0) {
   </div>
 </div>
 <script>
+let prevTimer=null;
+function switchTab(tab){
+  const isPrev = tab==='prev';
+  document.getElementById('aContent').style.display = isPrev?'none':'block';
+  document.getElementById('aPreview').style.display = isPrev?'block':'none';
+  document.getElementById('tabEdit').style.background = isPrev?'':'#1a3a5c';
+  document.getElementById('tabEdit').style.color = isPrev?'':'#5af';
+  document.getElementById('tabPrev').style.background = isPrev?'#1a3a5c':'';
+  document.getElementById('tabPrev').style.color = isPrev?'#5af':'';
+  if(isPrev) renderPreview();
+}
+function schedulePreview(){ clearTimeout(prevTimer); prevTimer=setTimeout(renderPreview, 500); }
+function renderPreview(){
+  const el=document.getElementById('aPreview');
+  const md=document.getElementById('aContent').value;
+  el.textContent=md;
+  el.innerHTML=marked.parse(el.textContent);
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(el, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+  }
+  if (window.highlightCodeBlocks) highlightCodeBlocks(el);
+}
 async function saveArticle(){
   const btn=event.target; btn.disabled=true;
   const msg=document.getElementById('saveMsg');
