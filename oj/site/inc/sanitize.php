@@ -21,6 +21,18 @@ function sanitize_name(string $s, int $maxLen = 50): string {
     return $s;
 }
 
+// @提及渲染：@用户名 存在则转为 Markdown 链接 [@xxx](user.php?name=xxx)
+// 前端 marked 渲染成 <a href="user.php?name=xxx">，自动获得用户名片悬停
+function render_mentions(string $content): string {
+    global $pdo;
+    return preg_replace_callback('/(?<![A-Za-z0-9_@])@([A-Za-z0-9_]{1,50})/', function($m) use ($pdo) {
+        $name = $m[1];
+        $s = $pdo->prepare("SELECT 1 FROM users WHERE username=?");
+        $s->execute([$name]);
+        return $s->fetch() ? "[@$name](user.php?name=".urlencode($name).")" : $m[0];
+    }, $content);
+}
+
 // HTML 白名单净化（聊天等可渲染内容）：
 //   允许: input/textarea/button/font/p/span 等装饰性标签
 //   禁止: script/form/iframe/head/meta/style/object/embed 等危险标签

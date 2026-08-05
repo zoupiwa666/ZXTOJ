@@ -2,6 +2,7 @@
 // 聊天 - 获取与某好友的消息（最多10条，自动清掉10条之前的）
 require __DIR__.'/../inc/config.php';
 require __DIR__.'/../inc/auth.php';
+require_once __DIR__.'/../inc/sanitize.php';
 requireLogin();
 require_once __DIR__.'/../inc/chat_tables.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -14,6 +15,7 @@ $stmt = $pdo->prepare(
    ORDER BY id DESC LIMIT 10");
 $stmt->execute([$me['id'], $fid, $fid, $me['id']]);
 $msgs = array_reverse($stmt->fetchAll());
+foreach ($msgs as &$m) { $m['content'] = render_mentions($m['content']); }
 // 数据库里只保留最新 10 条，更早的直接删除
 if (!empty($msgs)) {
     $keepId = $msgs[0]['id'];

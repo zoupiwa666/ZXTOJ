@@ -1,6 +1,7 @@
 <?php
 require __DIR__.'/inc/config.php';
 require __DIR__.'/inc/auth.php';
+require_once __DIR__.'/inc/sanitize.php';
 require __DIR__.'/inc/article_tables.php';
 requireLogin();
 $me = currentUser();
@@ -74,7 +75,7 @@ require __DIR__.'/inc/header.php';
 </div>
 <div style="font-size:11px;color:#666;margin-bottom:16px"><?= userBadge($art['author'], null, 16) ?> · <?=date('Y-m-d H:i', strtotime($art['created_at']))?> · 更新 <?=date('Y-m-d H:i', strtotime($art['updated_at']))?></div>
 
-<div class="article-body md"><?=htmlspecialchars($art['content'])?></div>
+<div class="article-body md"><?=htmlspecialchars(render_mentions($art['content']))?></div>
 
 <!-- 点赞/点踩 -->
 <div style="display:flex;gap:12px;align-items:center;margin:16px 0;padding:12px 16px;background:#141414;border:1px solid #222;border-radius:8px">
