@@ -53,12 +53,12 @@ $list->execute([$pid]); $sols = $list->fetchAll();
   </div>
 
   <div class="sol-side">
-    <h3>📘 题解操作</h3>
+    <h3><i class="fa-solid fa-book-open"></i> 题解操作</h3>
     <?php if ($prob['solution_open'] || $isAdmin): ?>
-    <a class="btn" style="width:100%;text-align:center;background:#1a3a5c;color:#5af" href="article_edit.php?problem=<?=htmlspecialchars($pid)?>">✍️ 提交题解</a>
+    <a class="btn" style="width:100%;text-align:center;background:#1a3a5c;color:#5af" href="article_edit.php?problem=<?=htmlspecialchars($pid)?>"><i class="fa-solid fa-pen"></i> 提交题解</a>
     <div style="font-size:10px;color:#666;margin-top:8px;text-align:center">用文章写题解，提交后管理员审核</div>
     <?php else: ?>
-    <div style="text-align:center;color:#c90;font-size:12px;padding:10px 0">🔒 管理员已关闭新题解提交</div>
+    <div style="text-align:center;color:#c90;font-size:12px;padding:10px 0"><i class="fa-solid fa-lock"></i> 管理员已关闭新题解提交</div>
     <?php endif; ?>
 
     <?php if ($isAdmin): ?>

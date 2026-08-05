@@ -35,8 +35,8 @@ if ($id > 0) {
 <div class="ae-box">
   <input id="aTitle" placeholder="文章标题" value="<?=htmlspecialchars($art['title'] ?? '')?>" style="margin-bottom:10px">
   <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-    <button class="btn btn-sm" id="tabEdit" onclick="switchTab('edit')" style="background:#1a3a5c;color:#5af">✏️ 编辑</button>
-    <button class="btn btn-sm" id="tabPrev" onclick="switchTab('prev')">👁️ 预览</button>
+    <button class="btn btn-sm" id="tabEdit" onclick="switchTab('edit')" style="background:#1a3a5c;color:#5af"><i class="fa-solid fa-pen-to-square"></i> 编辑</button>
+    <button class="btn btn-sm" id="tabPrev" onclick="switchTab('prev')"><i class="fa-solid fa-eye"></i> 预览</button>
     <span style="font-size:11px;color:#888;margin-left:auto">Markdown + 公式 + 代码高亮，实时预览</span>
   </div>
   <textarea id="aContent" rows="18" placeholder="支持 Markdown（- 列表缩进、**加粗**、$公式$、代码块...）" oninput="schedulePreview()"><?=htmlspecialchars($art['content'] ?? '')?></textarea>

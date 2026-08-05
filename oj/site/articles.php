@@ -7,7 +7,7 @@ $me = currentUser();
 $perm = article_perm($me['username']);
 $isAdmin = isAdmin();
 ?>
-<h1 class="page-title">📰 文章</h1>
+<h1 class="page-title"><i class="fa-solid fa-newspaper"></i> 文章</h1>
 
 <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
   <?php if ($isAdmin || $perm['can_publish'] == 1): ?>
@@ -28,7 +28,7 @@ if ($isAdmin) {
 ?>
 <?php if ($pendingSols): ?>
 <div class="card" style="border-left:3px solid #c90;margin-bottom:16px">
-  <div style="font-size:13px;color:#c90;margin-bottom:8px;letter-spacing:1px">⏳ 待审核题解 (<?=count($pendingSols)?>)</div>
+  <div style="font-size:13px;color:#c90;margin-bottom:8px;letter-spacing:1px"><i class="fa-solid fa-hourglass-half"></i> 待审核题解 (<?=count($pendingSols)?>)</div>
   <?php foreach ($pendingSols as $ps): ?>
   <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1c1c1c;font-size:12px">
     <a href="article.php?id=<?=$ps['id']?>" style="color:#5af;text-decoration:none"><?=htmlspecialchars($ps['title'])?></a>
@@ -66,7 +66,7 @@ if ($perm['can_view'] == 1 || $isAdmin) {
 ?>
 
 <?php if ($anns): ?>
-<h2 style="font-size:13px;color:#ffab00;margin:12px 0 8px;letter-spacing:1px">📢 公告</h2>
+<h2 style="font-size:13px;color:#ffab00;margin:12px 0 8px;letter-spacing:1px"><i class="fa-solid fa-bullhorn"></i> 公告</h2>
 <?php foreach ($anns as $a): ?>
 <div class="card" style="padding:14px 18px;border-left:3px solid #ffab00">
   <a href="article.php?id=<?=$a['id']?>" style="color:#ffab00;text-decoration:none;font-size:14px;font-weight:600"><?=htmlspecialchars($a['title'])?></a>
@@ -74,7 +74,7 @@ if ($perm['can_view'] == 1 || $isAdmin) {
 </div>
 <?php endforeach; endif; ?>
 
-<h2 style="font-size:13px;color:#fff;margin:16px 0 8px;letter-spacing:1px">📄 文章<?= $perm['can_view']==0 && !$isAdmin ? '（仅我的）' : '' ?></h2>
+<h2 style="font-size:13px;color:#fff;margin:16px 0 8px;letter-spacing:1px"><i class="fa-solid fa-file-lines"></i> 文章<?= $perm['can_view']==0 && !$isAdmin ? '（仅我的）' : '' ?></h2>
 <?php if (!$arts): ?>
 <div style="padding:40px;text-align:center;color:#666;font-size:12px">暂无文章</div>
 <?php else: foreach ($arts as $a): ?>

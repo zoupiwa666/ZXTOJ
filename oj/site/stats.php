@@ -50,7 +50,7 @@ require __DIR__ . '/inc/header.php';
 <div class="stat-wrap">
 <a class="back" href="problem.php?id=<?=$pid?>">← 返回题目</a>
 <div class="stat-head">
-  <h1>📊 <?=htmlspecialchars($problem['title'])?>  - AC 统计 <span class="meta"><?=$pid?> · 每人最后一次 AC 提交 · 共 <?=count($rows)?> 人</span></h1>
+  <h1><i class="fa-solid fa-chart-bar"></i> <?=htmlspecialchars($problem['title'])?>  - AC 统计 <span class="meta"><?=$pid?> · 每人最后一次 AC 提交 · 共 <?=count($rows)?> 人</span></h1>
 </div>
 
 <table class="data-table">

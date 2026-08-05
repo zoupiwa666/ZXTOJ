@@ -6,7 +6,7 @@ requireRole('admin');
 $users = $pdo->query("SELECT u.id,u.username,u.role, IFNULL(p.can_view,1) cv, IFNULL(p.can_publish,1) cp, IFNULL(p.can_edit,0) ce
                       FROM users u LEFT JOIN article_permissions p ON p.username=u.username ORDER BY u.role DESC,u.id")->fetchAll();
 ?>
-<h1 class="page-title">🔐 文章权限管理</h1>
+<h1 class="page-title"><i class="fa-solid fa-lock"></i> 文章权限管理</h1>
 <div style="font-size:11px;color:#888;margin-bottom:12px">设置每个用户的：查看 / 发布 / 修改 权限（未设置的用户默认：可查看、可发布、不可修改）</div>
 <table style="width:100%;border-collapse:collapse;font-size:12px">
 <thead><tr style="color:#888;text-align:left">

@@ -15,7 +15,7 @@ try { $anns = $pdo->query("SELECT * FROM articles WHERE is_announcement=1 ORDER 
 
 <?php if ($anns): ?>
 <div class="ann-section">
-  <h2>📢 公告</h2>
+  <h2><i class="fa-solid fa-bullhorn"></i> 公告</h2>
   <?php foreach ($anns as $a): ?>
   <div class="ann-card">
     <a class="ann-title" href="article.php?id=<?=$a['id']?>"><?=htmlspecialchars($a['title'])?></a>
@@ -26,5 +26,5 @@ try { $anns = $pdo->query("SELECT * FROM articles WHERE is_announcement=1 ORDER 
 </div>
 <?php endif; ?>
 
-<div style="padding:60px 0;text-align:center;color:#555;font-size:13px">欢迎使用 ZXT Super OJ ✨</div>
+<div style="padding:60px 0;text-align:center;color:#555;font-size:13px">欢迎使用 ZXT Super OJ </div>
 <?php require __DIR__ . '/inc/footer.php'; ?>

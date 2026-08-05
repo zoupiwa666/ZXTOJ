@@ -56,11 +56,11 @@ textarea:focus{border-color:#444}
   <textarea id="code" placeholder="在此粘贴代码...">print(input())</textarea>
   <div style="display:flex;gap:8px;margin-bottom:12px">
   <button class="btn-submit" onclick="submitCode()" id="submitBtn" style="flex:1">提交评测</button>
-  <button class="btn-submit" onclick="toggleStats()" id="statsBtn" style="width:110px;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c">📊 统计</button>
+  <button class="btn-submit" onclick="toggleStats()" id="statsBtn" style="width:110px;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c"><i class="fa-solid fa-chart-bar"></i> 统计</button>
   </div>
   <div id="statsPanel" style="display:none;margin-bottom:16px;background:#141414;border:1px solid #2a2a2a;padding:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <b style="font-size:12px;color:#fff">📊 本题提交统计</b><span style="font-size:11px;color:#888" id="statsCount"></span>
+      <b style="font-size:12px;color:#fff"><i class="fa-solid fa-chart-bar"></i> 本题提交统计</b><span style="font-size:11px;color:#888" id="statsCount"></span>
     </div>
     <div id="statsLoading" style="color:#888;font-size:12px;padding:16px;text-align:center">加载中...</div>
     <div id="statsTableWrap" style="display:none;overflow-x:auto">

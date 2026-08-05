@@ -52,12 +52,12 @@ require __DIR__.'/inc/header.php';
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
   <h1 style="font-size:18px;color:#fff;font-weight:400">
-    <?= $art['is_announcement'] ? '<span style="color:#ffab00;font-size:12px">📢公告</span> ' : '' ?><?=htmlspecialchars($art['title'])?>
+    <?= $art['is_announcement'] ? '<span style="color:#ffab00;font-size:12px"><i class="fa-solid fa-bullhorn"></i>公告</span> ' : '' ?><?=htmlspecialchars($art['title'])?>
     <span style="font-size:11px;color:<?=$art['is_public']?'#0c0':'#c90'?>;margin-left:8px"><?=$art['is_public']?'公开':'私密'?></span>
   </h1>
   <div style="display:flex;gap:8px;align-items:center">
     <?php if ($art['is_solution']): ?>
-      <span style="font-size:11px;color:#5af;border:1px solid #2a5a8c;background:#1a3a5c;padding:3px 10px">📘 题解 <?=htmlspecialchars($art['solution_problem'])?></span>
+      <span style="font-size:11px;color:#5af;border:1px solid #2a5a8c;background:#1a3a5c;padding:3px 10px"><i class="fa-solid fa-book-open"></i> 题解 <?=htmlspecialchars($art['solution_problem'])?></span>
       <span style="font-size:11px;color:<?=$art['solution_status']==='approved'?'#0c0':($art['solution_status']==='rejected'?'#f66':'#c90')?>">
         <?=$art['solution_status']==='approved'?'已通过':($art['solution_status']==='rejected'?'已拒绝':'待审核')?>
       </span>
@@ -78,13 +78,13 @@ require __DIR__.'/inc/header.php';
 
 <!-- 点赞/点踩 -->
 <div style="display:flex;gap:12px;align-items:center;margin:16px 0;padding:12px 16px;background:#141414;border:1px solid #222;border-radius:8px">
-  <button id="btnLike" onclick="vote(1)" style="padding:6px 16px;background:<?=$myVote==1?'#1a3a5c':'#222'?>;color:<?=$myVote==1?'#5af':'#ccc'?>;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:13px">👍 赞 <span id="likeCnt"><?=$likes?></span></button>
-  <button id="btnDislike" onclick="vote(-1)" style="padding:6px 16px;background:<?=$myVote==-1?'#3a1a1a':'#222'?>;color:<?=$myVote==-1?'#f66':'#ccc'?>;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:13px">👎 踩 <span id="dislikeCnt"><?=$dislikes?></span></button>
+  <button id="btnLike" onclick="vote(1)" style="padding:6px 16px;background:<?=$myVote==1?'#1a3a5c':'#222'?>;color:<?=$myVote==1?'#5af':'#ccc'?>;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:13px"><i class="fa-solid fa-thumbs-up"></i> 赞 <span id="likeCnt"><?=$likes?></span></button>
+  <button id="btnDislike" onclick="vote(-1)" style="padding:6px 16px;background:<?=$myVote==-1?'#3a1a1a':'#222'?>;color:<?=$myVote==-1?'#f66':'#ccc'?>;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:13px"><i class="fa-solid fa-thumbs-down"></i> 踩 <span id="dislikeCnt"><?=$dislikes?></span></button>
   <span style="font-size:11px;color:#888;margin-left:auto"><?=$likes?> 赞 / <?=$dislikes?> 踩</span>
 </div>
 
 <!-- 评论区 -->
-<h2 style="font-size:14px;color:#fff;font-weight:400;margin:20px 0 10px;letter-spacing:1px">💬 评论 <span id="cmtTotal" style="color:#888">0</span></h2>
+<h2 style="font-size:14px;color:#fff;font-weight:400;margin:20px 0 10px;letter-spacing:1px"><i class="fa-solid fa-comments"></i> 评论 <span id="cmtTotal" style="color:#888">0</span></h2>
 <div style="margin-bottom:14px">
   <textarea id="cmtInput" rows="3" placeholder="写下你的评论（支持 Markdown，字体最大150px）..." style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#ddd;font-size:13px;padding:10px 12px;outline:none;resize:vertical;font-family:inherit"></textarea>
   <div style="margin-top:6px"><button class="btn btn-sm" onclick="postComment()">发表评论</button><span id="cmtMsg" style="font-size:12px;color:#999;margin-left:8px"></span></div>

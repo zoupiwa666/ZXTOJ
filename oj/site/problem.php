@@ -83,7 +83,7 @@ try {
       <a href="submission.php?id=<?=$lastSub['id']?>" title="查看提交记录" class="last-status" style="color:<?=$color?>;border-color:<?=$color?>"><?=$st?> <?=intval($lastSub['score'])?></a>
       <?php endif; ?>
       <h1 style="font-size:22px;color:#fff;font-weight:400;margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px"><?=htmlspecialchars($problem['title'])?>
-  <a href="solutions.php?problem=<?=urlencode($pid)?>" style="display:inline-flex;align-items:center;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;padding:5px 16px;font-size:13px;font-weight:600;letter-spacing:1px;text-decoration:none">📘 题解<?= $sol ? '' : '' ?></a>
+  <a href="solutions.php?problem=<?=urlencode($pid)?>" style="display:inline-flex;align-items:center;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;padding:5px 16px;font-size:13px;font-weight:600;letter-spacing:1px;text-decoration:none"><i class="fa-solid fa-book-open"></i> 题解<?= $sol ? '' : '' ?></a>
 </h1>
     </div>
     <div class="meta" style="margin-top:10px">
@@ -95,7 +95,7 @@ try {
   <?php if ($hasData): ?>
   <div style="margin:12px 0;display:flex;gap:8px;flex-wrap:wrap">
     <?php $li = isset($_GET["list"]) ? "&list=".intval($_GET["list"]) : ""; ?><a href="submit.php?id=<?=$pid?><?=$li?>" style="display:inline-block;padding:8px 24px;background:#2a2a2a;color:#ccc;text-decoration:none;font-size:12px;letter-spacing:1px">提交</a>
-    <a href="stats.php?problem_id=<?=$pid?>" style="display:inline-block;padding:8px 24px;background:#1a3a5c;color:#5af;text-decoration:none;font-size:12px;letter-spacing:1px;border:1px solid #2a5a8c">📊 统计</a>
+    <a href="stats.php?problem_id=<?=$pid?>" style="display:inline-block;padding:8px 24px;background:#1a3a5c;color:#5af;text-decoration:none;font-size:12px;letter-spacing:1px;border:1px solid #2a5a8c"><i class="fa-solid fa-chart-bar"></i> 统计</a>
   </div>
   <?php endif; ?>
 

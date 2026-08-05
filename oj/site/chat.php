@@ -63,7 +63,7 @@ $me = currentUser();
   <!-- 右侧：聊天窗口 -->
   <div class="chat-main">
     <div class="chat-head" id="chatHead">选择左侧好友开始聊天</div>
-    <div class="chat-msgs" id="chatMsgs"><div class="chat-empty">👈 选择左侧好友开始聊天</div></div>
+    <div class="chat-msgs" id="chatMsgs"><div class="chat-empty"><i class="fa-solid fa-hand-point-left"></i> 选择左侧好友开始聊天</div></div>
     <div class="chat-input" id="chatInputBox" style="display:none">
       <textarea id="msgInput" placeholder="输入消息（最多3.5KB），Enter发送，Shift+Enter换行" onkeydown="onInputKey(event)"></textarea>
       <button class="btn" style="align-self:stretch" onclick="sendMsg()">发送</button>

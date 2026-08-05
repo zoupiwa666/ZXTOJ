@@ -128,6 +128,7 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 input,textarea,select{border-radius:8px;transition:border-color .2s,box-shadow .2s,background .2s}
 input:focus,textarea:focus,select:focus{border-color:#5af;box-shadow:0 0 0 3px rgba(90,170,255,.12);background:#1f1f1f}
 </style>
+<link rel="stylesheet" href="assets/fa/all.min.css">
 <link rel="stylesheet" href="assets/highlight.css"><style>.hljs-ln-numbers{text-align:right;color:#444;border-right:1px solid #222;padding-right:7px;margin-right:7px;user-select:none;font-size:inherit!important;line-height:inherit!important}.hljs-ln td{padding:0!important;background:transparent!important}.hljs-ln tr:hover{background:#0f0f0f}.hljs-ln tr:hover td{background:transparent!important}.hljs[data-highlighted],.hljs [data-highlighted]{font-size:inherit!important;line-height:inherit!important;background:transparent!important}.hljs-ln-code{padding-left:0!important}code.hljs[data-highlighted]{display:contents!important;background:transparent!important;padding:0!important}.hljs,.hljs *,.hljs-ln,.hljs-ln *,.hljs-ln-line{font-family:Consolas,'Courier New',monospace!important;font-size:12px!important;line-height:1.5!important}
 .hljs-ln td,.hljs-ln th{padding:2px 0!important;border:none!important}
 .hljs-ln-numbers{-webkit-user-select:none;user-select:none}</style></head></head>
