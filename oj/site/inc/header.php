@@ -63,7 +63,8 @@ body{font-family:Inter,'Segoe UI','PingFang SC','Microsoft YaHei','Helvetica Neu
   display:flex;align-items:center;justify-content:space-between;
   padding:0 32px;height:48px;
 }
-.topbar .title{color:#fff;font-size:16px;font-weight:700;text-decoration:none;letter-spacing:2px}
+.topbar .title{color:#fff;font-size:16px;font-weight:700;text-decoration:none;letter-spacing:2px;display:inline-flex;align-items:center;gap:10px}
+.topbar .logo-icon{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid #333;flex-shrink:0}
 .topbar .title span{color:#aaa;font-weight:400;font-size:12px;margin-left:6px}
 .topbar .btns{display:flex;gap:0}
 .topbar .btns a{
@@ -158,7 +159,7 @@ input:focus,textarea:focus,select:focus{border-color:#5af;box-shadow:0 0 0 3px r
 .hljs-ln-numbers{-webkit-user-select:none;user-select:none}</style></head></head>
 <body>
 <div class="topbar">
-  <a class="title" href="/">ZXT SUPER OJ<span>v1</span></a>
+  <a class="title" href="/"><img src="assets/favicon.jpg" class="logo-icon" alt="logo">ZXT SUPER OJ<span>v1</span></a>
   <div class="btns">
     <?php if ($currentUser): ?>
       <span class="user" style="display:flex;align-items:center"><?= userBadge($currentUser["username"], $currentUser["avatar"] ?? null, 24) ?></span>
