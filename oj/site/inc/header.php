@@ -53,6 +53,7 @@ function userBadge($username, $avatar = null, $size = 20) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/jpeg" href="assets/favicon.jpg">
 <title><?= $pageTitle ?? 'Zxt Super OJ' ?></title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
