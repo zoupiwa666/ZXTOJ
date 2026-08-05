@@ -19,6 +19,13 @@ if (!article_can_view($art, $me['username'])) {
     exit;
 }
 $canEdit = article_can_edit($art, $me['username']);
+// 点赞/点踩统计 + 我的投票
+$st = $pdo->prepare("SELECT SUM(value=1) AS likes, SUM(value=-1) AS dislikes FROM article_likes WHERE article_id=?");
+$st->execute([$id]); $vc = $st->fetch();
+$likes = intval($vc['likes'] ?? 0); $dislikes = intval($vc['dislikes'] ?? 0);
+$mv = $pdo->prepare("SELECT value FROM article_likes WHERE article_id=? AND username=?");
+$mv->execute([$id, $me['username']]);
+$myVote = intval($mv->fetchColumn() ?: 0);
 $pageTitle = '文章 - Zxt Super OJ';
 require __DIR__.'/inc/header.php';
 ?>
@@ -55,6 +62,22 @@ require __DIR__.'/inc/header.php';
 
 <div class="article-body md"><?=htmlspecialchars($art['content'])?></div>
 
+<!-- 点赞/点踩 -->
+<div style="display:flex;gap:12px;align-items:center;margin:16px 0;padding:12px 16px;background:#141414;border:1px solid #222;border-radius:8px">
+  <button id="btnLike" onclick="vote(1)" style="padding:6px 16px;background:<?=$myVote==1?'#1a3a5c':'#222'?>;color:<?=$myVote==1?'#5af':'#ccc'?>;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:13px">👍 赞 <span id="likeCnt"><?=$likes?></span></button>
+  <button id="btnDislike" onclick="vote(-1)" style="padding:6px 16px;background:<?=$myVote==-1?'#3a1a1a':'#222'?>;color:<?=$myVote==-1?'#f66':'#ccc'?>;border:1px solid #333;border-radius:6px;cursor:pointer;font-size:13px">👎 踩 <span id="dislikeCnt"><?=$dislikes?></span></button>
+  <span style="font-size:11px;color:#888;margin-left:auto"><?=$likes?> 赞 / <?=$dislikes?> 踩</span>
+</div>
+
+<!-- 评论区 -->
+<h2 style="font-size:14px;color:#fff;font-weight:400;margin:20px 0 10px;letter-spacing:1px">💬 评论 <span id="cmtTotal" style="color:#888">0</span></h2>
+<div style="margin-bottom:14px">
+  <textarea id="cmtInput" rows="3" placeholder="写下你的评论（支持 Markdown，字体最大150px）..." style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#ddd;font-size:13px;padding:10px 12px;outline:none;resize:vertical;font-family:inherit"></textarea>
+  <div style="margin-top:6px"><button class="btn btn-sm" onclick="postComment()">发表评论</button><span id="cmtMsg" style="font-size:12px;color:#999;margin-left:8px"></span></div>
+</div>
+<div id="cmtList"></div>
+<div id="cmtPager" style="display:flex;gap:10px;align-items:center;margin-top:12px;font-size:12px"></div>
+
 <script>
 document.querySelectorAll('.article-body.md').forEach(el=>{
   el.innerHTML = marked.parse(el.textContent);
@@ -63,6 +86,56 @@ document.querySelectorAll('.article-body.md').forEach(el=>{
   }
 });
 if (window.highlightCodeBlocks) highlightCodeBlocks(document.querySelector('.article-body'));
+let cmtPage = 1;
+async function vote(val){
+  const fd=new FormData(); fd.append('article_id',<?=$id?>); fd.append('value',val);
+  const r=await fetch('api/article_vote.php',{method:'POST',body:fd});
+  const d=await r.json();
+  if(!d.ok){ alert(d.message||'操作失败'); return; }
+  document.getElementById('likeCnt').textContent=d.likes;
+  document.getElementById('dislikeCnt').textContent=d.dislikes;
+  const bl=document.getElementById('btnLike'), bd=document.getElementById('btnDislike');
+  bl.style.background = val===1 ? '#1a3a5c' : '#222'; bl.style.color = val===1 ? '#5af' : '#ccc';
+  bd.style.background = val===-1 ? '#3a1a1a' : '#222'; bd.style.color = val===-1 ? '#f66' : '#ccc';
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderCmt(c){
+  const av = c.avatar ? '<img src="'+c.avatar+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle">' : '';
+  return '<div style="background:#141414;border:1px solid #222;border-radius:8px;padding:12px 14px;margin-bottom:8px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+av
+    +'<a href="user.php?name='+encodeURIComponent(c.username)+'" style="color:#5af;text-decoration:none;font-size:12px">'+c.username+'</a>'
+    +'<span style="color:#666;font-size:10px;margin-left:auto">'+c.created_at+'</span></div>'
+    +'<div class="cmt-body" style="font-size:13px;line-height:1.7;word-break:break-word">'+escapeHtml(c.content)+'</div></div>';
+}
+async function loadComments(page){
+  cmtPage = page||1;
+  const r=await fetch('api/article_comments.php?article_id=<?=$id?>&page='+cmtPage);
+  const d=await r.json();
+  document.getElementById('cmtTotal').textContent = d.total||0;
+  const list=document.getElementById('cmtList');
+  list.innerHTML = (d.comments||[]).map(renderCmt).join('') || '<div style="text-align:center;color:#666;padding:20px;font-size:12px">暂无评论，来抢沙发</div>';
+  list.querySelectorAll('.cmt-body').forEach(el=>{
+    el.innerHTML = marked.parse(el.textContent);
+    if (typeof renderMathInElement === 'function') renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+  });
+  if (window.highlightCodeBlocks) highlightCodeBlocks(list);
+  let p='';
+  if(d.page>1) p+='<button class="btn btn-sm" onclick="loadComments('+(d.page-1)+')">上一页</button>';
+  p+='<span style="color:#888">'+d.page+'/'+d.totalPages+'</span>';
+  if(d.page<d.totalPages) p+='<button class="btn btn-sm" onclick="loadComments('+(d.page+1)+')">下一页</button>';
+  document.getElementById('cmtPager').innerHTML=p;
+}
+async function postComment(){
+  const inp=document.getElementById('cmtInput'), msg=document.getElementById('cmtMsg');
+  const content=inp.value.trim();
+  if(!content){ msg.textContent='评论不能为空'; return; }
+  const fd=new FormData(); fd.append('article_id',<?=$id?>); fd.append('content',content);
+  const r=await fetch('api/article_comment.php',{method:'POST',body:fd});
+  const d=await r.json();
+  if(d.ok){ inp.value=''; msg.textContent='评论成功'; loadComments(1); }
+  else msg.textContent = d.message||'评论失败';
+}
+loadComments(1);
 async function delArticle(){
   if(!confirm('确定删除这篇文章？')) return;
   const fd=new FormData(); fd.append('id',<?=$id?>);

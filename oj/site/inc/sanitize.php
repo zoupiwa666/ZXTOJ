@@ -37,7 +37,15 @@ function sanitize_html(string $s): string {
             if (preg_match("/^\s*[\"']?\s*(?:javascript|vbscript|data):/i", $m[1])) return '';
             return $m[0];
         }, $s);
-    // 3) 白名单过滤：白名单外的标签全部剥掉（保留文本内容）
+    // 3) font-size 钳制：超过 150px 自动替换为 150px（防止字体过大）
+    $s = preg_replace_callback('/font-size\s*:\s*([\d.]+)\s*(px|pt|em|rem)?/i',
+        function($m) {
+            $num = (float)$m[1];
+            $unit = strtolower($m[2] ?? 'px');
+            $px = $num * ($unit==='pt' ? 1.333 : (($unit==='em'||$unit==='rem') ? 16 : 1));
+            return $px > 150 ? 'font-size:150px' : $m[0];
+        }, $s);
+    // 4) 白名单过滤：白名单外的标签全部剥掉（保留文本内容）
     $s = strip_tags($s, $allowed);
     return $s;
 }

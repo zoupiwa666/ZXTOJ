@@ -23,6 +23,22 @@ function article_ensure_tables(): void {
             updated_by VARCHAR(50),
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS article_likes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            article_id INT NOT NULL,
+            username VARCHAR(50) NOT NULL,
+            value TINYINT NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_vote (article_id, username)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS article_comments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            article_id INT NOT NULL,
+            username VARCHAR(50) NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_article (article_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     } catch (Exception $e) {}
 }
 article_ensure_tables();
