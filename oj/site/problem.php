@@ -85,6 +85,8 @@ try {
       <h1 style="font-size:22px;color:#fff;font-weight:400;margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px"><?=htmlspecialchars($problem['title'])?>
   <?php if ($sol): ?>
   <a href="article.php?id=<?=$sol['id']?>" style="display:inline-flex;align-items:center;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;padding:5px 16px;font-size:13px;font-weight:600;letter-spacing:1px;text-decoration:none">📘 题解</a>
+  <?php else: ?>
+  <span onclick="alert('该题暂无题解，去文章区看看？')" style="display:inline-flex;align-items:center;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;padding:5px 16px;font-size:13px;font-weight:600;letter-spacing:1px;cursor:pointer">📘 题解</span>
   <?php endif; ?>
 </h1>
     </div>
