@@ -61,18 +61,18 @@ body{font-family:Inter,'Segoe UI','PingFang SC','Microsoft YaHei','Helvetica Neu
 .topbar{
   background:#252525;border-bottom:1px solid #333;
   display:flex;align-items:center;justify-content:space-between;
-  padding:0 32px;height:48px;
+  padding:0 32px;height:64px;
 }
-.topbar .title{color:#fff;font-size:16px;font-weight:700;text-decoration:none;letter-spacing:2px;display:inline-flex;align-items:center;gap:10px}
-.topbar .logo-icon{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid #333;flex-shrink:0}
-.topbar .title span{color:#aaa;font-weight:400;font-size:12px;margin-left:6px}
+.topbar .title{color:#fff;font-size:27px;font-weight:700;text-decoration:none;letter-spacing:2px;display:inline-flex;align-items:center;gap:14px}
+.topbar .logo-icon{width:54px;height:54px;border-radius:50%;object-fit:cover;border:1px solid #333;flex-shrink:0}
+.topbar .title span{color:#aaa;font-weight:400;font-size:14px;margin-left:6px}
 .topbar .btns{display:flex;gap:0}
 .topbar .btns a{
-  color:#aaa;text-decoration:none;font-size:12px;padding:0 16px;line-height:48px;
+  color:#aaa;text-decoration:none;font-size:12px;padding:0 16px;line-height:64px;
   border-left:1px solid #222;transition:color .15s
 }
 .topbar .btns a:hover{color:#fff}
-.topbar .user{color:#fff;font-size:12px;padding:0 16px;line-height:48px;border-left:1px solid #222}
+.topbar .user{color:#fff;font-size:12px;padding:0 16px;line-height:64px;border-left:1px solid #222}
 
 .navbar{
   background:#252525;border-bottom:1px solid #222;
