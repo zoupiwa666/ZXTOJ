@@ -36,7 +36,11 @@ require __DIR__.'/inc/header.php';
 <style>
 .article-body{background:#141414;border:1px solid #222;padding:24px;line-height:1.8}
 .article-body h1{font-size:20px;margin:16px 0 8px}.article-body h2{font-size:17px;margin:14px 0 8px}.article-body h3{font-size:15px;margin:12px 0 6px}
-.article-body p{margin:8px 0}.article-body ul,.article-body ol{margin:8px 0 8px 22px}
+.article-body p{margin:8px 0}.article-body ul,.article-body ol{margin:8px 0 8px 22px;padding-left:0}
+/* 嵌套列表：明显缩进 + 左侧细线 */
+.article-body li > ul,.article-body li > ol{margin:6px 0 6px 24px;padding-left:12px;border-left:2px solid #333}
+.cmt-body ul,.cmt-body ol{margin:4px 0 4px 18px;padding-left:0}
+.cmt-body li > ul,.cmt-body li > ol{margin:4px 0 4px 22px;padding-left:10px;border-left:2px solid #333}
 .article-body li{margin:2px 0}
 .article-body code{background:#252525;padding:1px 5px;border-radius:3px;font-size:13px;font-family:Consolas,'Courier New',monospace}
 .article-body pre{background:#0f0f0f;border:1px solid #222;padding:12px;border-radius:6px;overflow-x:auto;margin:10px 0}

@@ -32,7 +32,8 @@ $me = currentUser();
 .cmsg .cm-t{display:block;font-size:10px;color:#777;margin-top:4px}
 .cmsg .cm-body h1,.cmsg .cm-body h2,.cmsg .cm-body h3{font-size:14px;margin:6px 0 4px}
 .cmsg .cm-body p{margin:4px 0}
-.cmsg .cm-body ul,.cmsg .cm-body ol{margin:4px 0 4px 18px}
+.cmsg .cm-body ul,.cmsg .cm-body ol{margin:4px 0 4px 18px;padding-left:0}
+.cmsg .cm-body li > ul,.cmsg .cm-body li > ol{margin:4px 0 4px 22px;padding-left:10px;border-left:2px solid #333}
 .cmsg .cm-body code{background:#333;padding:1px 4px;border-radius:3px;font-size:12px}
 .cmsg .cm-body pre{background:#111;padding:8px;border-radius:4px;overflow-x:auto;margin:6px 0}
 .cmsg .cm-body pre code{background:none;padding:0}
