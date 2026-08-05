@@ -47,7 +47,7 @@ $list->execute([$pid]); $sols = $list->fetchAll();
     <?php else: foreach ($sols as $a): ?>
     <div class="sol-card">
       <a class="st" href="article.php?id=<?=$a['id']?>"><?=htmlspecialchars($a['title'])?></a>
-      <div class="sm"><?=htmlspecialchars($a['author'])?> · <?=date('Y-m-d H:i', strtotime($a['created_at']))?></div>
+      <div class="sm"><?= userBadge($a['author'], null, 16) ?> · <?=date('Y-m-d H:i', strtotime($a['created_at']))?></div>
     </div>
     <?php endforeach; endif; ?>
   </div>

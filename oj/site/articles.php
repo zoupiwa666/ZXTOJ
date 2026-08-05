@@ -32,7 +32,7 @@ if ($isAdmin) {
   <?php foreach ($pendingSols as $ps): ?>
   <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1c1c1c;font-size:12px">
     <a href="article.php?id=<?=$ps['id']?>" style="color:#5af;text-decoration:none"><?=htmlspecialchars($ps['title'])?></a>
-    <span style="color:#888">→ 题目 <?=htmlspecialchars($ps['solution_problem'])?> · <?=htmlspecialchars($ps['author'])?></span>
+    <span style="color:#888">→ 题目 <?=htmlspecialchars($ps['solution_problem'])?> · <?= userBadge($ps['author'], null, 14) ?></span>
     <span style="margin-left:auto;display:flex;gap:6px">
       <button class="btn btn-sm" style="color:#0c0" onclick="reviewSol(<?=$ps['id']?>,'approve')">通过</button>
       <button class="btn btn-sm btn-danger" onclick="reviewSol(<?=$ps['id']?>,'reject')">拒绝</button>
@@ -51,15 +51,15 @@ async function reviewSol(id, action){
 </script>
 <?php
 // 公告（人人可见，置顶）
-$anns = $pdo->query("SELECT * FROM articles WHERE is_announcement=1 ORDER BY id DESC LIMIT 10")->fetchAll();
+$anns = $pdo->query("SELECT * FROM articles WHERE is_announcement=1 AND is_solution=0 ORDER BY id DESC LIMIT 10")->fetchAll();
 // 公开文章（需查看权限） + 我的私密文章
 if ($perm['can_view'] == 1 || $isAdmin) {
-    $arts = $pdo->prepare("SELECT * FROM articles WHERE is_announcement=0 AND (is_public=1 OR author=?) ORDER BY id DESC LIMIT 50");
+    $arts = $pdo->prepare("SELECT * FROM articles WHERE is_announcement=0 AND is_solution=0 AND (is_public=1 OR author=?) ORDER BY id DESC LIMIT 50");
     $arts->execute([$me['username']]);
     $arts = $arts->fetchAll();
 } else {
     // 无查看权限：只看自己的
-    $arts = $pdo->prepare("SELECT * FROM articles WHERE is_announcement=0 AND author=? ORDER BY id DESC LIMIT 50");
+    $arts = $pdo->prepare("SELECT * FROM articles WHERE is_announcement=0 AND is_solution=0 AND author=? ORDER BY id DESC LIMIT 50");
     $arts->execute([$me['username']]);
     $arts = $arts->fetchAll();
 }
@@ -70,7 +70,7 @@ if ($perm['can_view'] == 1 || $isAdmin) {
 <?php foreach ($anns as $a): ?>
 <div class="card" style="padding:14px 18px;border-left:3px solid #ffab00">
   <a href="article.php?id=<?=$a['id']?>" style="color:#ffab00;text-decoration:none;font-size:14px;font-weight:600"><?=htmlspecialchars($a['title'])?></a>
-  <div style="font-size:11px;color:#666;margin-top:4px"><?=$a['author']?> · <?=date('Y-m-d H:i', strtotime($a['created_at']))?></div>
+  <div style="font-size:11px;color:#666;margin-top:6px"><?= userBadge($a['author'], null, 16) ?> · <?=date('Y-m-d H:i', strtotime($a['created_at']))?></div>
 </div>
 <?php endforeach; endif; ?>
 
@@ -81,7 +81,7 @@ if ($perm['can_view'] == 1 || $isAdmin) {
 <div class="card" style="padding:14px 18px">
   <a href="article.php?id=<?=$a['id']?>" style="color:#fff;text-decoration:none;font-size:14px;font-weight:600"><?=htmlspecialchars($a['title'])?></a>
   <span style="font-size:10px;color:<?=$a['is_public']?'#0c0':'#c90'?>;margin-left:8px"><?=$a['is_public']?'公开':'私密'?></span>
-  <div style="font-size:11px;color:#666;margin-top:4px"><?=$a['author']?> · <?=date('Y-m-d H:i', strtotime($a['created_at']))?></div>
+  <div style="font-size:11px;color:#666;margin-top:6px"><?= userBadge($a['author'], null, 16) ?> · <?=date('Y-m-d H:i', strtotime($a['created_at']))?></div>
 </div>
 <?php endforeach; endif; ?>
 <?php require __DIR__.'/inc/footer.php'; ?>

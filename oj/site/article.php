@@ -72,7 +72,7 @@ require __DIR__.'/inc/header.php';
     <?php endif; ?>
   </div>
 </div>
-<div style="font-size:11px;color:#666;margin-bottom:16px"><?=$art['author']?> · <?=date('Y-m-d H:i', strtotime($art['created_at']))?> · 更新 <?=date('Y-m-d H:i', strtotime($art['updated_at']))?></div>
+<div style="font-size:11px;color:#666;margin-bottom:16px"><?= userBadge($art['author'], null, 16) ?> · <?=date('Y-m-d H:i', strtotime($art['created_at']))?> · 更新 <?=date('Y-m-d H:i', strtotime($art['updated_at']))?></div>
 
 <div class="article-body md"><?=htmlspecialchars($art['content'])?></div>
 
