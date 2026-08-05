@@ -150,6 +150,15 @@ def main():
     p.add_argument("--shared-dir", default="/tmp/shared")
     args = p.parse_args()
 
+    # 流式状态输出（docker_runner 轮询此文件）
+    def emit_status(st, msg=None):
+        try:
+            payload = {"status": st}
+            if msg: payload["message"] = msg
+            with open(os.path.join(args.shared_dir, "status.json"), 'w') as f:
+                json.dump(payload, f, ensure_ascii=False)
+        except: pass
+
     result={"status":"failed","compile_error":None,"system_error":None,"results":[]}
     try:
         cfg=json.loads((Path(args.workdir)/"task_config.json").read_text())
@@ -191,10 +200,13 @@ def main():
         cp=Path(args.workdir)/"checker.py"; ck=cp.read_text() if cp.exists() else None
 
         if lang in ("c","cpp14","cpp17","cpp20"):
+            emit_status("compiling", "编译中...")
             ok,err=compile_code(args.workdir, lang, args.shared_dir)
             if not ok:
+                emit_status("compile_error")
                 result["status"]="compile_error"; result["compile_error"]=err
                 (Path(args.output_dir)/"result.json").write_text(json.dumps(result,ensure_ascii=False)); return
+        emit_status("running", "评测中...")
 
         tasks=[(i,c,lang,args.workdir,args.shared_dir,tl,ml,ol,ck,args.output_dir) 
                for i,c in enumerate(cases)]

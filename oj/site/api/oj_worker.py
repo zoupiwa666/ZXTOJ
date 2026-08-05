@@ -67,6 +67,12 @@ def process_submission(sid, username, problem_id, language, code):
                 try:
                     data = json.loads(line[5:])
                 except: continue
+                # 编译中状态 → 更新提交状态
+                if data.get('status') == 'compiling':
+                    try:
+                        cur.execute("UPDATE submissions SET status='compiling' WHERE id=%s", (sid,)); conn.commit()
+                    except Exception: pass
+                    continue
                 if '_interim' in data: continue
                 if 'test_case_index' not in data or data.get('test_case_index') is None: continue
                 idx = int(data['test_case_index'])

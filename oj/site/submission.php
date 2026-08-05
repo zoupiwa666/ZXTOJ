@@ -47,7 +47,7 @@ require __DIR__ . '/inc/header.php';
 .meta-grid .label{color:#999}
 .meta-grid .val{color:#ccc}
 .s-AC{color:#0c0}.s-WA{color:#c00}.s-TLE{color:#c90}.s-RE{color:#f60}
-.s-MLE{color:#c0c}.s-OLE{color:#09c}.s-CE{color:#c60}.s-judging{color:#09f}.s-waiting{color:#999}
+.s-MLE{color:#c0c}.s-OLE{color:#09c}.s-CE{color:#c60}.s-judging{color:#09f}.s-waiting{color:#999}.s-compiling{color:#ffab00}
 .code-block{background:#1a1a1a;border:1px solid #222;padding:14px 16px;margin-bottom:24px;position:relative}
 .code-block .lang-tag{position:absolute;top:0;right:0;background:#222;color:#999;font-size:10px;padding:2px 10px;letter-spacing:1px}
 .code-block pre{font-family:Consolas,'Courier New',monospace;font-size:12px;color:#aaa;white-space:pre-wrap;line-height:1.5;margin:0}
@@ -166,9 +166,9 @@ async function pollStatus(){
    if(loading && list.length > 0) loading.remove();
   }
   const cur = d.status || '';
-  const isFinal = (cur !== 'judging' && cur !== 'waiting' && cur !== '');
+  const isFinal = (cur !== 'judging' && cur !== 'waiting' && cur !== 'compiling' && cur !== '');
   // 评测完成：自动刷新展示完整详情
-  if(lastStatus && (lastStatus==='judging'||lastStatus==='waiting') && isFinal && !reloaded){
+  if(lastStatus && (lastStatus==='judging'||lastStatus==='waiting'||lastStatus==='compiling') && isFinal && !reloaded){
    reloaded = true;
    setTimeout(()=>location.reload(), 500);
    return;

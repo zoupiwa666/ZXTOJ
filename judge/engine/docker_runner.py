@@ -1,5 +1,5 @@
 """预热容器池 + 持久化复用 + 流式评测"""
-import os, json, shutil, subprocess, asyncio, uuid
+import os, json, shutil, subprocess, asyncio, uuid, glob, time
 from pathlib import Path
 from config import (
     JUDGE_PARALLEL_WORKERS, DOCKER_IMAGE, POOL_SIZE, CONTAINER_MEMORY_LIMIT,
@@ -92,13 +92,15 @@ class ContainerPool:
         except: pass
 
     async def exec_judge_streaming(self, cid: str, host_workdir: str, task_id: str) -> dict:
-        """同步可靠版：前台运行 judge，读 result.json"""
+        """流式版：边跑边读进度文件（status.json + prog_*.json），测试点完成即推送"""
         try:
-            # 创建共享目录（judge 容器内写代码用）
             task_shared = os.path.join(SHARED_HOST_DIR, task_id)
             os.makedirs(task_shared, exist_ok=True)
             os.chmod(task_shared, 0o777)
-            # 前台运行 judge（等它跑完）
+            task_progress.setdefault(task_id, {})
+            task_progress[task_id]["status"] = "running"
+            task_progress[task_id].setdefault("results", [])
+            seen = set()
             proc = await asyncio.create_subprocess_exec(
                 "docker", "exec", cid,
                 "python3", "/judge_system/judge_core.py",
@@ -106,23 +108,81 @@ class ContainerPool:
                 "--output-dir", CONTAINER_OUTPUT_DIR,
                 "--shared-dir", f"{SHARED_CONTAINER_DIR}/{task_id}",
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-            try:
-                out, err = await asyncio.wait_for(proc.communicate(), timeout=CONTAINER_TIMEOUT + 10)
-            except asyncio.TimeoutError:
+            start_t = time.time()
+            timed_out = False
+            while True:
+                # 轮询状态文件（compiling / running / compile_error）
+                try:
+                    sp = os.path.join(task_shared, "status.json")
+                    if os.path.exists(sp):
+                        st = json.load(open(sp))
+                        if st.get("status") in ("compiling", "running", "compile_error"):
+                            task_progress[task_id]["status"] = st["status"]
+                            if st.get("message"): task_progress[task_id]["interim"] = st["message"]
+                except Exception:
+                    pass
+                # 轮询各测试点结果文件（完成一个读一个，立即推送）
+                for fp in glob.glob(os.path.join(task_shared, "prog_*.json")):
+                    if fp in seen: continue
+                    seen.add(fp)
+                    try:
+                        r = json.load(open(fp))
+                        idx = r.get("test_case_index")
+                        if idx is not None:
+                            res = task_progress[task_id].setdefault("results", [])
+                            while len(res) <= idx: res.append(None)
+                            res[idx] = r
+                    except Exception:
+                        pass
+                # 等待进程结束（0.1s 粒度轮询）
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=0.1)
+                    break
+                except asyncio.TimeoutError:
+                    pass
+                if time.time() - start_t > CONTAINER_TIMEOUT + 10:
+                    timed_out = True
+                    break
+            if timed_out:
                 subprocess.run(["docker","exec",cid,"pkill","-f","judge_core"], capture_output=True, timeout=3)
+                try: await proc.wait()
+                except Exception: pass
+                task_progress[task_id]["status"] = "failed"
                 return {"status":"failed","system_error":"评测超时","results":[]}
-            # 读 result.json
+            # 进程结束后：短暂等待并补读所有 prog 文件（快速测试点可能在轮询间隙全部完成）
+            await asyncio.sleep(0.15)
+            for fp in glob.glob(os.path.join(task_shared, "prog_*.json")):
+                if fp in seen: continue
+                seen.add(fp)
+                try:
+                    r = json.load(open(fp))
+                    idx = r.get("test_case_index")
+                    if idx is not None:
+                        res = task_progress[task_id].setdefault("results", [])
+                        while len(res) <= idx: res.append(None)
+                        res[idx] = r
+                except Exception:
+                    pass
+            out, err = await proc.communicate()
+            # 读最终 result.json（完整结果含 output/expected）
             cat = subprocess.run(["docker","exec",cid,"cat",f"{CONTAINER_OUTPUT_DIR}/result.json"],
                 capture_output=True, text=True, timeout=5)
             if cat.returncode == 0 and cat.stdout.strip():
                 final = json.loads(cat.stdout)
                 if task_id in task_progress:
+                    # 最终结果合并进 task_progress，确保 stream 推送所有测试点（即使 prog 文件漏读）
                     task_progress[task_id]["status"] = final.get("status","completed")
+                    if final.get("results"):
+                        res = task_progress[task_id].setdefault("results", [])
+                        for r in final["results"]:
+                            idx = r.get("test_case_index")
+                            if idx is not None:
+                                while len(res) <= idx: res.append(None)
+                                res[idx] = r
                 return final
             return {"status":"failed","system_error":f"无结果: {err.decode()[:200]}","results":[]}
         except Exception as e:
             return {"status":"failed","system_error":f"评测错误:{e}","results":[]}
-
     def stop_pool(self):
         print("[Pool] 停止...")
         for c in self._pool:

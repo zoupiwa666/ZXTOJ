@@ -21,8 +21,8 @@ $sortDir = strtolower($_GET['dir'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
 $sql .= " ORDER BY $sortCol $sortDir, id DESC LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($sql); $stmt->execute($params); $rows = $stmt->fetchAll();
 
-$colorMap = ['AC'=>'#25ad40','WA'=>'#ff4f4f','TLE'=>'#ffab00','RE'=>'#f8603a','MLE'=>'#d500f9','OLE'=>'#0091ea','CE'=>'#ff9100','SE'=>'#999','judging'=>'#09f','waiting'=>'#666'];
-$labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>'Runtime Error','MLE'=>'Memory Exceeded','OLE'=>'Output Exceeded','CE'=>'Compile Error','SE'=>'System Error','judging'=>'Judging','waiting'=>'Waiting'];
+$colorMap = ['AC'=>'#25ad40','WA'=>'#ff4f4f','TLE'=>'#ffab00','RE'=>'#f8603a','MLE'=>'#d500f9','OLE'=>'#0091ea','CE'=>'#ff9100','SE'=>'#999','judging'=>'#09f','waiting'=>'#666','compiling'=>'#ffab00'];
+$labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>'Runtime Error','MLE'=>'Memory Exceeded','OLE'=>'Output Exceeded','CE'=>'Compile Error','SE'=>'System Error','judging'=>'Judging','waiting'=>'Waiting','compiling'=>'编译中'];
 ?>
 <style>
 .filter-bar{background:#141414;border:1px solid #222;padding:16px 20px;margin-bottom:16px}

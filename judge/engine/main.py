@@ -68,11 +68,20 @@ async def stream_results(task_id: str):
     """SSE 流式推送评测进度"""
     async def event_generator():
         sent = set()
+        last_status = None
         for _ in range(600):
             prog = task_progress.get(task_id)
             if prog is None:
                 await asyncio.sleep(0.1)
                 continue
+            # 状态变化时推送（compiling → 编译中）
+            cur_status = prog.get("status", "")
+            if cur_status != last_status:
+                last_status = cur_status
+                if cur_status == "compiling":
+                    yield f"data: {json.dumps({'status':'compiling','_interim': prog.get('interim','编译中...')}, ensure_ascii=False)}\n\n"
+                elif cur_status == "running":
+                    yield f"data: {json.dumps({'status':'running','_interim': prog.get('interim','评测中...')}, ensure_ascii=False)}\n\n"
             results = prog.get("results", [])
             for i, r in enumerate(results):
                 if r is not None and i not in sent:
