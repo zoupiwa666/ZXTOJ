@@ -2,6 +2,58 @@
 <script src="assets/highlight.min.js"></script>
 <script src="assets/highlight-line-numbers.min.js"></script>
 <script>
+// ===== 用户名片悬停卡片（头像+名字+格言，点击进主页）=====
+(function(){
+  var card=null, timer=null;
+  function ensureCard(){
+    if(card) return card;
+    card=document.createElement('div'); card.className='ucard'; card.style.display='none';
+    card.addEventListener('click',function(){ if(card.dataset.url) location.href=card.dataset.url; });
+    document.body.appendChild(card); return card;
+  }
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function showCard(a){
+    var name='';
+    try{ name=decodeURIComponent(new URL(a.href).searchParams.get('name')||''); }catch(e){}
+    if(!name) return;
+    clearTimeout(timer);
+    timer=setTimeout(function(){
+      fetch('api/user_card.php?name='+encodeURIComponent(name)).then(function(r){return r.json();}).then(function(d){
+        var c=ensureCard();
+        if(!d||!d.ok){ c.style.display='none'; return; }
+        var ch=(d.username||'?')[0].toUpperCase();
+        var av=d.avatar
+          ? '<img class="uc-avatar" src="'+esc(d.avatar)+'">'
+          : '<span class="uc-avatar" style="display:flex;align-items:center;justify-content:center;color:#5af;font-size:17px;font-weight:700">'+esc(ch)+'</span>';
+        var role=d.role==='super_admin'?'<span class="uc-role">SA</span>':(d.role==='admin'?'<span class="uc-role">AD</span>':'');
+        c.innerHTML='<div class="uc-top">'+av+'<div class="uc-name">'+esc(d.username)+role+'</div></div>'
+          +'<div class="uc-motto">'+(d.motto?esc(d.motto):'这个人很懒，什么都没写~')+'</div>'
+          +'<div class="uc-tip">点击查看主页 →</div>';
+        c.dataset.url=a.href;
+        c.style.display='block';
+        var r=a.getBoundingClientRect();
+        c.classList.add('show');
+        var cw=c.offsetWidth, chh=c.offsetHeight;
+        var x=Math.max(4,Math.min(r.left, window.innerWidth-cw-8));
+        var y=r.bottom+8;
+        if(y+chh>window.innerHeight-8) y=r.top-chh-8;
+        c.style.left=x+'px'; c.style.top=y+'px';
+      }).catch(function(){});
+    },300);
+  }
+  function hideCard(){
+    clearTimeout(timer);
+    if(!card) return;
+    setTimeout(function(){ if(card){ card.classList.remove('show'); card.style.display='none'; } },250);
+  }
+  document.addEventListener('mouseover',function(e){
+    var a=e.target.closest?e.target.closest('a[href*="user.php?name="]'):null;
+    if(a){ showCard(a); }
+    else if(!e.target.closest||!e.target.closest('.ucard')){ hideCard(); }
+  });
+})();
+</script>
+<script>
 // 自动把带 placeholder 的输入框升级为浮动标签样式（OJ 风格）
 document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function(el){

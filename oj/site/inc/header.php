@@ -94,7 +94,16 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 .ubadge .uavatar{border-radius:50%;object-fit:cover;display:inline-block;background:#333;flex-shrink:0}
 .ubadge .uavatar-char{background:#2a3a5c;color:#fff;text-align:center;font-weight:700;border-radius:50%;display:inline-block;flex-shrink:0}
 .ubadge-name{color:#ccc;text-decoration:none}
-.ubadge-name:hover{color:#fff}</style>
+.ubadge-name:hover{color:#fff}
+/* 用户名片悬停卡片 */
+.ucard{position:fixed;z-index:9999;background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:12px 14px;min-width:180px;max-width:240px;box-shadow:0 8px 28px rgba(0,0,0,.55);opacity:0;transform:translateY(6px) scale(.95);transition:opacity .18s ease,transform .18s ease;pointer-events:none;cursor:pointer}
+.ucard.show{opacity:1;transform:none;pointer-events:auto}
+.ucard .uc-top{display:flex;align-items:center;gap:10px}
+.ucard .uc-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#2a3a5c;flex-shrink:0}
+.ucard .uc-name{font-size:13px;color:#fff;font-weight:600;letter-spacing:.5px}
+.ucard .uc-role{font-size:10px;color:#5af;margin-left:4px}
+.ucard .uc-motto{font-size:11px;color:#999;margin-top:7px;line-height:1.45;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ucard .uc-tip{font-size:10px;color:#666;margin-top:7px;text-align:center;border-top:1px solid #262626;padding-top:6px;letter-spacing:.5px}</style>
 <style>
 /* ===== 高级浮动输入框（OJ 风格）===== */
 .float-wrap{position:relative;margin-bottom:14px;flex:1;min-width:0}
