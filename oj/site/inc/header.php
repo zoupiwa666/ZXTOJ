@@ -137,12 +137,12 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 }
 .float-wrap textarea{resize:vertical;min-height:60px}
 .float-wrap .float-label{
-  position:absolute;left:13px;top:15px;color:#777;font-size:13px;pointer-events:none;margin:0;padding:0;
-  text-transform:none;letter-spacing:0;transition:all .18s ease;
+  position:absolute;left:13px;top:calc(var(--flabel,13px) * 1.15);color:#777;font-size:var(--flabel,13px);pointer-events:none;margin:0;padding:0;
+  text-transform:none;letter-spacing:0;transition:all .18s ease;line-height:1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 26px);
 }
 .float-wrap.focused .float-label,.float-wrap.filled .float-label{
-  top:5px;font-size:10px;color:#5af;letter-spacing:.5px;
+  top:4px;font-size:var(--flabel-up,10px);color:#5af;letter-spacing:.5px;
 }
 .float-wrap input:focus,.float-wrap textarea:focus,.float-wrap select:focus{
   border-color:#5af;background:#1f1f1f;box-shadow:0 0 0 3px rgba(90,170,255,.12);

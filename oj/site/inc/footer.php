@@ -77,6 +77,10 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!ph) return;
     var wrap=document.createElement('div');
     wrap.className='float-wrap'+(getComputedStyle(par).display==='flex'?' in-flex':'');
+    // 标签字号与输入框高度成固定比例：无下限，但有上限（不挡输入文字）
+    var ih = el.offsetHeight || 34;
+    wrap.style.setProperty('--flabel', Math.max(1, Math.min(Math.round(ih*0.26), 18)) + 'px');
+    wrap.style.setProperty('--flabel-up', Math.max(1, Math.min(Math.round(ih*0.15), 12)) + 'px');
     par.insertBefore(wrap,el);
     wrap.appendChild(el);
     var lab=document.createElement('label');
