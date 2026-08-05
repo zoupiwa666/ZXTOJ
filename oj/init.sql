@@ -171,3 +171,26 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     KEY idx_pair (sender_id, receiver_id),
     KEY idx_recv (receiver_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 文章功能
+CREATE TABLE IF NOT EXISTS articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    content LONGTEXT NOT NULL,
+    author VARCHAR(50) NOT NULL,
+    is_announcement TINYINT(1) DEFAULT 0,
+    is_public TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_visible (is_announcement, is_public)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS article_permissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    can_view TINYINT(1) DEFAULT 1,
+    can_publish TINYINT(1) DEFAULT 1,
+    can_edit TINYINT(1) DEFAULT 0,
+    updated_by VARCHAR(50),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

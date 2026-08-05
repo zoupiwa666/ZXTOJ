@@ -141,6 +141,7 @@ input:focus,textarea:focus,select:focus{border-color:#5af;box-shadow:0 0 0 3px r
   <a href="problems.php" class="<?= str_starts_with($currentPage,"problem")?"active":"" ?>">题库</a>
   <a href="lists.php" class="<?= $currentPage=='lists.php'||$currentPage=='list_view.php'?'active':'' ?>">题单</a>
   <a href="submissions.php" class="<?= $currentPage=="submissions.php"?"active":"" ?>">提交记录</a>
+  <a href="articles.php" class="<?= in_array($currentPage,['articles.php','article.php','article_edit.php'])?"active":"" ?>">文章</a>
   <?php if ($currentUser && in_array($currentUser['role'], ['admin','super_admin'])): ?>
     <a href="groups.php" class="<?= $currentPage=='groups.php'?'active':'' ?>">用户组</a>
   <?php endif; ?>
