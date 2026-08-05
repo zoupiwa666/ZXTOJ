@@ -35,8 +35,8 @@
         c.classList.add('show');
         var cw=c.offsetWidth, chh=c.offsetHeight;
         var x=Math.max(4,Math.min(r.left, window.innerWidth-cw-8));
-        var y=r.bottom+8;
-        if(y+chh>window.innerHeight-8) y=r.top-chh-8;
+        var y=r.bottom+2;
+        if(y+chh>window.innerHeight-8) y=r.top-chh-2;
         c.style.left=x+'px'; c.style.top=y+'px';
       }).catch(function(){});
     },300);
@@ -51,6 +51,8 @@
     if(a){ showCard(a); }
     else if(!e.target.closest||!e.target.closest('.ucard')){ hideCard(); }
   });
+  // 鼠标滚轮滚动时立即隐藏名片
+  document.addEventListener('wheel',function(){ hideCard(); },{passive:true});
 })();
 </script>
 <script>
