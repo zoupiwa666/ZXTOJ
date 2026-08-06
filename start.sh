@@ -298,12 +298,19 @@ if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "USE judge_problems" >/dev/nu
   docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null || true
   ok "数据库初始化完成"
 else
-  # 迁移兼容：旧库可能缺少新增表（如 problem_permissions），自动补齐
-  if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" judge_problems -e "SHOW TABLES LIKE 'problem_permissions'" 2>/dev/null | grep -q problem_permissions; then
-    info "检测到数据库缺少新表，自动导入 init.sql 补齐..."
+  # 迁移兼容：缺基础表（users）说明 init.sql 未成功导入，自动补齐
+  if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" judge_problems -e "SHOW TABLES LIKE 'users'" 2>/dev/null | grep -q users; then
+    info "检测到数据库缺少基础表，自动导入 init.sql 补齐..."
     docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null || true
     ok "数据库表结构已补齐"
   fi
+fi
+
+# 确保默认管理员 admin/admin123 存在（任何部署都不允许缺失）
+if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" judge_problems -N -e "SELECT COUNT(*) FROM users WHERE username='admin'" 2>/dev/null | grep -qE '^[1-9]'; then
+  info "admin 用户缺失，自动创建默认管理员..."
+  docker exec zxt-db mariadb "${DB_AUTH[@]}" judge_problems -e "INSERT IGNORE INTO users (username,password_hash,role) VALUES ('admin','\$2y\$10\$jxbs85Pip04IApadb0S4e.JvGpGLG2R8Jd7n6VkrsNoyDKnaKYk4K','super_admin')" 2>/dev/null || true
+  ok "默认管理员已创建（admin / admin123）"
 fi
 
 # 强制 root 密码与 .env 一致（防止新建库密码不匹配，覆盖有密码/无密码两种情况）
