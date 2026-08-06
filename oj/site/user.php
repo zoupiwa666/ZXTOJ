@@ -254,7 +254,7 @@ async function uploadAvatar(input){
   }catch(e){ ztAlert('上传失败','err'); }
 }
 // ===== 我的文件：分片并行上传（快速通道）=====
-const FCHUNK = 2*1024*1024, FCONC = 4;
+const FCHUNK = 4*1024*1024, FCONC = 2;
 function calcFileMD5(file){
   return new Promise(function(resolve){
     var chunks=Math.ceil(file.size/2097152), spark=new SparkMD5.ArrayBuffer, idx=0, reader=new FileReader;
