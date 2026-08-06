@@ -31,6 +31,11 @@ function userAvatar($username, $avatar = null, $size = 20) {
     }
     return '<span class="uavatar uavatar-char" style="width:'.$size.'px;height:'.$size.'px;line-height:'.$size.'px;font-size:'.max(9, intval($size*0.5)).'px">'.htmlspecialchars(strtoupper(mb_substr($username,0,1))).'</span>';
 }
+// 创建者显示：未知（空）则显示 admin
+function creator_display($created_by, $size = 16) {
+    $name = ($created_by !== null && $created_by !== '') ? $created_by : 'admin';
+    return userBadge($name, null, $size);
+}
 // 用户名颜色：管理员紫色，普通用户棕色
 function userColor(string $role): string {
     return in_array($role, ['super_admin', 'admin']) ? '#a855f7' : '#b0815a';

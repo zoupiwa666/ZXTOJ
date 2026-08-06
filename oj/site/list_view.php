@@ -19,7 +19,7 @@ async function load(){
  const d=await r.json();
  if(d.error){document.getElementById('app').innerHTML='<div style="color:#f66;text-align:center;padding:40px">'+d.error+'</div>';return;}
  const tags=(d.tags||'').split(',').filter(t=>t).map(t=>'<span class="tag">'+t+'</span>').join('');
- let html='<div class="lv-head"><div><h1>'+d.name+'</h1><div class="meta">'+(d.visibility==='public'?'公开':'私密')+' | 创建者: '+d.created_by+' | '+d.problems.length+'题</div><div style="margin-top:6px">'+tags+'</div></div>';
+ let html='<div class="lv-head"><div><h1>'+d.name+'</h1><div class="meta">'+(d.visibility==='public'?'公开':'私密')+' | 创建者: '+(d.created_by||'admin')+' | '+d.problems.length+'题</div><div style="margin-top:6px">'+tags+'</div></div>';
  if(d.can_manage){html+='<a class="btn-sm" href="list_manage.php?id='+listId+'">管理</a>';}
  html+='</div>';
  d.problems.forEach((p,i)=>{html+='<div class="p-row"><span style="color:#666;font-size:12px">'+(i+1)+'</span><a href="problem.php?id='+p.problem_id+'&list='+listId+'">'+p.problem_id+' '+p.title+'</a><span style="color:#666">→</span></div>';});

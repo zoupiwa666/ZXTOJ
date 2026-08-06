@@ -48,7 +48,7 @@ async function searchList(){
  for(const l of lists){
   const tags=(l.tags||'').split(',').filter(t=>t).map(t=>'<span class="tag">'+t+'</span>').join('');
   const d=document.createElement('div');d.className='l-card';d.onclick=()=>location.href='list_view.php?id='+l.id;
-  d.innerHTML='<div><h3>'+l.name+'</h3><div class="meta">'+l.count+'题 | 创建者: '+l.created_by+'</div><div style="margin-top:4px">'+tags+'</div></div><span style="color:#666">→</span>';
+  d.innerHTML='<div><h3>'+l.name+'</h3><div class="meta">'+l.count+'题 | 创建者: '+(l.created_by||'admin')+'</div><div style="margin-top:4px">'+tags+'</div></div><span style="color:#666">→</span>';
   document.getElementById('lists').appendChild(d);
  }
  if(!lists.length) document.getElementById('lists').innerHTML='<div style="text-align:center;color:#666;padding:40px">暂无题单</div>';

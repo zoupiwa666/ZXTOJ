@@ -45,7 +45,7 @@ if (isLoggedIn()) {
 <h1 class="page-title">题库</h1>
 <?php if (isAdmin()): ?><div style="margin-bottom:16px"><a href="edit.php" class="btn btn-sm">+ 新建题目</a></div><?php endif ?>
 <table class="p-table">
-<tr><th>编号</th><th>标题</th><th>时限</th><th>内存</th><?php if(isAdmin()):?><th></th><?php endif?></tr>
+<tr><th>编号</th><th>标题</th><th>创建者</th><th>时限</th><th>内存</th><?php if(isAdmin()):?><th></th><?php endif?></tr>
 <?php foreach($problems as $p):
   $ac = isset($userAC[$p['problem_id']]);
   $us = $userStatus[$p['problem_id']] ?? null;
@@ -56,6 +56,7 @@ if (isLoggedIn()) {
 <tr>
   <td class="pid"><?=$dot?><b><?=$p['problem_id']?></b> <?=$tag?></td>
   <td><a href="problem.php?id=<?=$p['problem_id']?>"><?=htmlspecialchars($p['title'])?></a></td>
+  <td><?= creator_display($p['created_by'] ?? null) ?></td>
   <td><?=$p['time_limit']?>s</td>
   <td><?=$p['memory_limit']?>MB</td>
   <?php if(isAdmin()):?><td><a href="edit.php?id=<?=$p['problem_id']?>" class="btn-sm">编辑</a></td><?php endif?>

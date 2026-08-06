@@ -89,6 +89,7 @@ try {
     <div class="meta" style="margin-top:10px">
       <span>时限: <?=$problem['time_limit']?>s</span>
       <span>内存: <?=$problem['memory_limit']?>MB</span>
+      <span>创建者: <?= creator_display($problem['created_by'] ?? null, 16) ?></span>
       <?php if (isAdmin()): ?><a href="edit.php?id=<?=$pid?>" style="color:#888;text-decoration:none;margin-left:auto;font-size:11px;border:1px solid #333;padding:2px 10px">编辑</a><?php endif; ?>
     </div>
   </div>
