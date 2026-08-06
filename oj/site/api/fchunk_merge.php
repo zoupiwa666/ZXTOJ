@@ -41,10 +41,12 @@ if ($used + $size > $MAX_TOTAL) {
 $dir2 = '/data/userfiles/' . $me['username'];
 @mkdir($dir2, 0777, true); @chmod($dir2, 0777);
 $stored = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
-if (!rename($tmp, $dir2.'/'.$stored)) {
+// rename 跨文件系统会失败（/tmp 与 /data 不同盘），改用复制+删除
+if (!copy($tmp, $dir2.'/'.$stored)) {
     @unlink($tmp);
     echo json_encode(['ok'=>false,'message'=>'文件保存失败，请检查目录权限']); exit;
 }
+@unlink($tmp);
 $pdo->prepare("INSERT INTO user_files (username, filename, stored_name, size) VALUES (?,?,?,?)")
     ->execute([$me['username'], $name, $stored, $size]);
 // 清理分片

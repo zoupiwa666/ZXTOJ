@@ -286,13 +286,22 @@ async function uploadFile(){
     while(ti<tasks.length){
       const i=tasks[ti++];
       const blob=f.slice(i*FCHUNK, Math.min((i+1)*FCHUNK, f.size));
-      await new Promise(function(res,rej){
-        const fd=new FormData(); fd.append('file',blob); fd.append('md5',md5); fd.append('index',i);
-        const xhr=new XMLHttpRequest(); xhr.open('POST','api/fchunk_upload.php');
-        xhr.onload=function(){ if(xhr.status>=200&&xhr.status<300){ done++; prog.value=Math.round(done/total*100); msg.textContent='上传中 '+Math.round(done/total*100)+'% ('+done+'/'+total+')'; res(); } else rej(); };
-        xhr.onerror=function(){ rej(); };
-        xhr.send(fd);
-      });
+      let ok=false;
+      for(let attempt=0; attempt<3 && !ok; attempt++){
+        try{
+          await new Promise(function(res,rej){
+            const fd=new FormData(); fd.append('file',blob); fd.append('md5',md5); fd.append('index',i);
+            const xhr=new XMLHttpRequest(); xhr.open('POST','api/fchunk_upload.php');
+            xhr.onload=function(){ if(xhr.status>=200&&xhr.status<300){ ok=true; res(); } else rej(); };
+            xhr.onerror=function(){ rej(); };
+            xhr.send(fd);
+          });
+        }catch(e){
+          if(attempt<2){ msg.textContent='分片'+i+'重试中 ('+(attempt+1)+'/3)...'; await new Promise(r=>setTimeout(r,1000*Math.pow(2,attempt))); }
+        }
+      }
+      if(!ok) throw new Error('chunk '+i+' failed');
+      done++; prog.value=Math.round(done/total*100); msg.textContent='上传中 '+Math.round(done/total*100)+'% ('+done+'/'+total+')';
     }
   }
   try{
