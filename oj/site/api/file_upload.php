@@ -25,9 +25,13 @@ if ($used + $size > $MAX_TOTAL) {
 
 $dir = '/data/userfiles/' . $me['username'];
 @mkdir($dir, 0777, true);
+@chmod($dir, 0777);
+if (!is_dir($dir) || !is_writable($dir)) {
+    echo json_encode(['ok'=>false,'message'=>'文件目录不可写，请检查 /data/userfiles 权限']); exit;
+}
 $stored = uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
 if (!move_uploaded_file($f['tmp_name'], "$dir/$stored")) {
-    echo json_encode(['ok'=>false,'message'=>'文件保存失败']); exit;
+    echo json_encode(['ok'=>false,'message'=>'文件保存失败，请检查目录权限']); exit;
 }
 $pdo->prepare("INSERT INTO user_files (username, filename, stored_name, size) VALUES (?,?,?,?)")
     ->execute([$me['username'], $name, $stored, $size]);

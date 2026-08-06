@@ -14,5 +14,6 @@ if (!file_exists($path)) { http_response_code(404); die('文件已丢失'); }
 header('Content-Type: application/octet-stream');
 header('Content-Disposition: attachment; filename="' . rawurlencode($f['filename']) . '"');
 header('Content-Length: ' . filesize($path));
-readfile($path);
+// nginx X-Accel 零拷贝直传（和下载数据包同原理）
+header('X-Accel-Redirect: /user_files/' . rawurlencode($me['username']) . '/' . rawurlencode($f['stored_name']));
 exit;

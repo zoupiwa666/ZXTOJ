@@ -5,8 +5,9 @@
 # =====================================================
 
 # 确保题目数据/头像上传目录存在且 oj(www-data) 可写
-mkdir -p /data/problems /var/www/oj/uploads/avatars
-chown -R www-data:www-data /data/problems /var/www/oj/uploads 2>/dev/null
+mkdir -p /data/problems /var/www/oj/uploads/avatars /data/userfiles
+chown -R www-data:www-data /data/problems /var/www/oj/uploads /data/userfiles 2>/dev/null
+chmod 777 /data/userfiles 2>/dev/null
 
 # 生成配置（DB_HOST/DB_PASS/JUDGE_URL 来自环境变量）
 php /var/www/oj/config_gen.php
