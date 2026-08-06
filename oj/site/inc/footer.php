@@ -62,6 +62,50 @@
   document.addEventListener('wheel',function(){ hideCardNow(); },{passive:true});
 })();
 </script>
+<style>
+/* 高级浮窗（替换 alert） */
+#ztToast{position:fixed;top:16px;right:16px;z-index:10001;display:flex;flex-direction:column;gap:8px;max-width:340px}
+.zt-toast{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:10px 16px;color:#ddd;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transform:translateX(24px);transition:all .25s ease}
+.zt-toast.show{opacity:1;transform:none}
+.zt-toast.err{border-color:#c00;color:#f66}
+.zt-toast.ok{border-color:#0c0}
+/* 左下角新消息提醒 */
+#ztNotify{position:fixed;left:16px;bottom:16px;z-index:10000;background:#1a1a1a;border:1px solid #2a5a8c;border-left:3px solid #5af;border-radius:8px;padding:12px 18px;color:#ddd;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.55);opacity:0;transform:translateY(20px);transition:all .28s ease;cursor:pointer;pointer-events:none}
+#ztNotify.show{opacity:1;transform:none;pointer-events:auto}
+</style>
+<script>
+// ===== 高级浮窗（替换 alert）=====
+function ztAlert(msg, type){
+  var c=document.getElementById('ztToast');
+  if(!c){ c=document.createElement('div'); c.id='ztToast'; document.body.appendChild(c); }
+  var t=document.createElement('div');
+  t.className='zt-toast '+(type||'');
+  t.textContent=msg;
+  c.appendChild(t);
+  requestAnimationFrame(function(){ t.classList.add('show'); });
+  setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },300); },3500);
+}
+// ===== 左下角新消息提醒 =====
+(function(){
+  var el=document.createElement('div'); el.id='ztNotify';
+  el.addEventListener('click',function(){ location.href='chat.php'; });
+  document.body.appendChild(el);
+  var last=-1, inited=false;
+  function poll(){
+    fetch('api/unread_count.php',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){
+      var n=(d&&d.unread)||0;
+      if(inited && n>last && n>0){
+        el.innerHTML='<b style="color:#5af">📨 新消息</b><div style="font-size:11px;color:#999;margin-top:3px">你有 <b style="color:#fff">'+n+'</b> 条未读消息，点击查看</div>';
+        el.classList.add('show');
+        setTimeout(function(){ el.classList.remove('show'); },5000);
+      }
+      last=n; inited=true;
+    }).catch(function(){});
+  }
+  poll();
+  setInterval(poll,8000);
+})();
+</script>
 <script>
 // 自动把带 placeholder 的输入框升级为浮动标签样式（OJ 风格）
 document.addEventListener('DOMContentLoaded',function(){

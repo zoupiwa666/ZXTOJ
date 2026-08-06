@@ -244,7 +244,7 @@ async function sendMsg(){
   if(!content) return;
   const d = await api('api/chat_send.php', {friend_id:currentFriend, content});
   if(d.ok){ inp.value=''; await loadMessages(); loadFriends(); }
-  else alert(d.message || '发送失败');
+  else ztAlert(d.message || '发送失败');
 }
 
 loadFriends();

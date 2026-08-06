@@ -64,13 +64,13 @@ function createList(){
 function closeNewList(){document.getElementById('newListModal').style.display='none';}
 async function doCreateList(){
  const name=document.getElementById('nlName').value.trim();
- if(!name){alert('请输入题单名');return;}
+ if(!name){ztAlert('请输入题单名');return;}
  const vis=document.getElementById('nlPrivate').checked?'private':'public';
  const tags=document.getElementById('nlTags').value.trim();
  const r=await fetch('api/list.php?m=create',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)+'&visibility='+vis+'&tags='+encodeURIComponent(tags)});
  const d=await r.json();
  if(d.ok){closeNewList();location.href='list_view.php?id='+d.id;}
- else alert(d.error);
+ else ztAlert(d.error);
 }
 searchList();
 </script>

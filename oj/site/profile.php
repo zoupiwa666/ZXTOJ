@@ -79,10 +79,10 @@ async function uploadAvatar(input){
  try{
   const r=await fetch('api/avatar.php',{method:'POST',body:f});
   let d;
-  try{ d=await r.json(); }catch(e){ alert('服务器返回异常 (HTTP '+r.status+')，请检查 OJ 镜像 GD 支持'); return; }
+  try{ d=await r.json(); }catch(e){ ztAlert('服务器返回异常 (HTTP '+r.status+')，请检查 OJ 镜像 GD 支持'); return; }
   if(d.ok) location.reload();
-  else alert(d.message || '上传失败');
- }catch(e){ alert('上传失败: '+e.message); }
+  else ztAlert(d.message || '上传失败');
+ }catch(e){ ztAlert('上传失败: '+e.message); }
 }
 </script>
 <?php require __DIR__ . '/inc/footer.php'; ?>

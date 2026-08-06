@@ -106,7 +106,7 @@ async function vote(val){
   const fd=new FormData(); fd.append('article_id',<?=$id?>); fd.append('value',val);
   const r=await fetch('api/article_vote.php',{method:'POST',body:fd});
   const d=await r.json();
-  if(!d.ok){ alert(d.message||'操作失败'); return; }
+  if(!d.ok){ ztAlert(d.message||'操作失败'); return; }
   document.getElementById('likeCnt').textContent=d.likes;
   document.getElementById('dislikeCnt').textContent=d.dislikes;
   const bl=document.getElementById('btnLike'), bd=document.getElementById('btnDislike');
@@ -157,7 +157,7 @@ async function reviewSol(action){
   const fd=new FormData(); fd.append('id',<?=$id?>); fd.append('action',action);
   const r=await fetch('api/article_review.php',{method:'POST',body:fd});
   const d=await r.json();
-  alert(d.message||'操作完成'); location.reload();
+  ztAlert(d.message||'操作完成'); location.reload();
 }
 async function delArticle(){
   if(!confirm('确定删除这篇文章？')) return;
@@ -165,7 +165,7 @@ async function delArticle(){
   const r=await fetch('api/article_delete.php',{method:'POST',body:fd});
   const d=await r.json();
   if(d.ok) location.href='articles.php';
-  else alert(d.message||'删除失败');
+  else ztAlert(d.message||'删除失败');
 }
 </script>
 <?php require __DIR__.'/inc/footer.php'; ?>

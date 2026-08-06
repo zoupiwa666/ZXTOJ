@@ -136,7 +136,7 @@ $labelMap = ['AC'=>'Accepted','WA'=>'Wrong Answer','TLE'=>'Time Exceeded','RE'=>
 function toggleAll(cb){ document.querySelectorAll('.row-check').forEach(x=>x.checked=cb.checked); }
 async function batchAction(action){
   const boxes = [...document.querySelectorAll('.row-check:checked')];
-  if(!boxes.length){ alert('请先勾选要处理的提交记录'); return; }
+  if(!boxes.length){ ztAlert('请先勾选要处理的提交记录'); return; }
   const ids = boxes.map(x=>x.value);
   const isDel = action==='delete';
   if(!confirm('确定对 '+ids.length+' 条提交'+(isDel?'执行删除？此操作不可恢复！':'执行重测？将覆盖当前结果。'))) return;

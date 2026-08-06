@@ -187,8 +187,8 @@ async function rejudge(sid, btn){
   const r = await fetch('api/rejudge.php', {method:'POST', body: fd});
   const d = await r.json();
   if(d.ok){ btn.textContent = '完成，刷新中...'; setTimeout(()=>location.reload(), 800); }
-  else { alert(d.message || '重测失败'); btn.disabled=false; btn.textContent='重测'; }
- }catch(e){ alert('重测失败: '+e.message); btn.disabled=false; btn.textContent='重测'; }
+  else { ztAlert(d.message || '重测失败'); btn.disabled=false; btn.textContent='重测'; }
+ }catch(e){ ztAlert('重测失败: '+e.message); btn.disabled=false; btn.textContent='重测'; }
 }
 function addCaseRow(x){
  if(document.getElementById('lc-'+x.test_case_index)) return;

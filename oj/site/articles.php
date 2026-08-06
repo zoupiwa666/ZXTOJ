@@ -46,7 +46,7 @@ async function reviewSol(id, action){
   const fd=new FormData(); fd.append('id',id); fd.append('action',action);
   const r=await fetch('api/article_review.php',{method:'POST',body:fd});
   const d=await r.json();
-  alert(d.message||'操作完成'); location.reload();
+  ztAlert(d.message||'操作完成'); location.reload();
 }
 </script>
 <?php

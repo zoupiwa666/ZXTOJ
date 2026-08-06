@@ -50,12 +50,12 @@ async function loadPerms(){
  for(const p of perms){h+='<div class="perm-row"><span>'+p.username+'</span><button class="btn-sm btn-danger" onclick="revoke(\''+p.username+'\')">撤销</button></div>';}
  document.getElementById('perms').innerHTML=h||'<span style="color:#666">无授权</span>';
 }
-async function saveInfo(){const n=document.getElementById('newName').value,t=document.getElementById('newTags').value,v=document.getElementById('newVis').value;const r=await fetch('api/list.php?m=update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&name='+encodeURIComponent(n)+'&tags='+encodeURIComponent(t)+'&visibility='+v});const d=await r.json();alert(d.ok?'已保存':d.error);load();}
-async function addP(){const pid=document.getElementById('addPid').value;const r=await fetch('api/list.php?m=add',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&problem_id='+encodeURIComponent(pid)});const d=await r.json();alert(d.ok?'已添加':d.error);load();}
+async function saveInfo(){const n=document.getElementById('newName').value,t=document.getElementById('newTags').value,v=document.getElementById('newVis').value;const r=await fetch('api/list.php?m=update',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&name='+encodeURIComponent(n)+'&tags='+encodeURIComponent(t)+'&visibility='+v});const d=await r.json();ztAlert(d.ok?'已保存':d.error);load();}
+async function addP(){const pid=document.getElementById('addPid').value;const r=await fetch('api/list.php?m=add',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&problem_id='+encodeURIComponent(pid)});const d=await r.json();ztAlert(d.ok?'已添加':d.error);load();}
 async function removeP(pid){const r=await fetch('api/list.php?m=remove',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&problem_id='+encodeURIComponent(pid)});await r.json();load();}
-async function grant(){const u=document.getElementById('grantU').value;const r=await fetch('api/list.php?m=grant',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&username='+encodeURIComponent(u)});const d=await r.json();alert(d.ok?'已授权':d.error);loadPerms();}
+async function grant(){const u=document.getElementById('grantU').value;const r=await fetch('api/list.php?m=grant',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&username='+encodeURIComponent(u)});const d=await r.json();ztAlert(d.ok?'已授权':d.error);loadPerms();}
 async function revoke(u){const r=await fetch('api/list.php?m=revoke',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'list_id='+listId+'&username='+encodeURIComponent(u)});await r.json();loadPerms();}
-async function del(){if(!confirm('确定删除题单?'))return;const r=await fetch('api/list.php?m=delete&id='+listId);const d=await r.json();alert(d.ok?'已删除':d.error);location.href='lists.php';}
+async function del(){if(!confirm('确定删除题单?'))return;const r=await fetch('api/list.php?m=delete&id='+listId);const d=await r.json();ztAlert(d.ok?'已删除':d.error);location.href='lists.php';}
 load();
 </script>
 <?php require __DIR__ . '/inc/footer.php'; ?>
