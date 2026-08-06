@@ -31,6 +31,17 @@ $totalSubs->execute([$username]); $totalSubs = $totalSubs->fetchColumn();
 $acSubs = $pdo->prepare("SELECT COUNT(DISTINCT problem_id) FROM submissions WHERE username = ? AND status='AC'");
 $acSubs->execute([$username]); $acSubs = $acSubs->fetchColumn();
 
+// 提交记录（最近50条）
+$subs = $pdo->prepare("SELECT id, problem_id, status, score, language, created_at FROM submissions WHERE username=? ORDER BY id DESC LIMIT 50");
+$subs->execute([$username]); $recentSubs = $subs->fetchAll();
+// 该用户发表的文章
+require_once __DIR__ . '/inc/article_tables.php';
+$arts = $pdo->prepare("SELECT id, title, is_announcement, is_public, created_at FROM articles WHERE author=? AND is_solution=0 ORDER BY id DESC LIMIT 50");
+$arts->execute([$username]); $userArts = $arts->fetchAll();
+
+// 状态颜色
+$colorMap = ['AC'=>'#25ad40','WA'=>'#ff4f4f','TLE'=>'#ffab00','RE'=>'#f8603a','MLE'=>'#d500f9','OLE'=>'#0091ea','CE'=>'#ff9100','SE'=>'#999','judging'=>'#09f','waiting'=>'#999','compiling'=>'#ffab00'];
+
 $isOwner = isLoggedIn() && currentUser()['id'] == $profile['id'];
 $pageTitle = $username . ' - Zxt Super OJ';
 require __DIR__ . '/inc/header.php';
@@ -56,6 +67,16 @@ require __DIR__ . '/inc/header.php';
 .p-table a{color:#ccc;text-decoration:none}.p-table a:hover{color:#fff}
 .ac-badge{color:#0c0;font-size:11px}.no-ac{color:#999;font-size:11px}
 .empty{text-align:center;color:#999;padding:20px;font-size:12px}
+.tabs{display:flex;gap:0;border-bottom:1px solid #222;margin-bottom:20px}
+.tabs .tab{padding:10px 22px;color:#999;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
+.tabs .tab:hover{color:#fff}
+.tabs .tab.active{color:#fff;border-bottom-color:#5af}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.avatar-upload{width:60px;height:60px;border:1px solid #333;border-radius:50%;overflow:hidden;cursor:pointer;position:relative}
+.avatar-upload img{width:100%;height:100%;object-fit:cover}
+.avatar-upload .overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-size:10px;color:#ccc;opacity:0;transition:.15s}
+.avatar-upload:hover .overlay{opacity:1}
 </style>
 
 <div class="profile-header">
@@ -93,39 +114,108 @@ require __DIR__ . '/inc/header.php';
   </div>
 </div>
 
-<?php if ($acList): ?>
-<div class="section-title">已通过 (<?=count($acList)?>)</div>
-<table class="p-table">
-<tr><th>题目</th><th>分数</th><th>尝试次数</th></tr>
-<?php foreach($acList as $p): ?>
-<tr>
-  <td><a href="problem.php?id=<?=$p['problem_id']?>"><?=$p['problem_id']?></a></td>
-  <td><span class="ac-badge"><?=$p['best_score']?>/<?=$p['max_score']?></span></td>
-  <td><?=$p['attempts']?></td>
-</tr>
-<?php endforeach ?>
-</table>
-<?php endif ?>
+<div class="tabs">
+  <div class="tab active" data-tab="practice" onclick="showTab('practice')">练习情况</div>
+  <div class="tab" data-tab="subs" onclick="showTab('subs')">提交记录</div>
+  <div class="tab" data-tab="articles" onclick="showTab('articles')">文章</div>
+  <?php if ($isOwner): ?><div class="tab" data-tab="settings" onclick="showTab('settings')">信息设置</div><?php endif; ?>
+</div>
 
-<?php if ($tryList): ?>
-<div class="section-title">尝试中 (<?=count($tryList)?>)</div>
-<table class="p-table">
-<tr><th>题目</th><th>最高分</th><th>尝试次数</th></tr>
-<?php foreach($tryList as $p): ?>
-<tr>
-  <td><a href="problem.php?id=<?=$p['problem_id']?>"><?=$p['problem_id']?></a></td>
-  <td><?=$p['best_score']?>/<?=$p['max_score']?></td>
-  <td><?=$p['attempts']?></td>
-</tr>
-<?php endforeach ?>
-</table>
-<?php endif ?>
+<!-- 练习情况 -->
+<div id="panel-practice" class="tab-panel active">
+  <?php if ($acList): ?>
+  <div class="section-title">已通过 (<?=count($acList)?>)</div>
+  <table class="p-table"><tr><th>题目</th><th>分数</th><th>尝试次数</th></tr>
+  <?php foreach($acList as $p): ?>
+  <tr><td><a href="problem.php?id=<?=$p['problem_id']?>"><?=$p['problem_id']?></a></td><td><span class="ac-badge"><?=$p['best_score']?>/<?=$p['max_score']?></span></td><td><?=$p['attempts']?></td></tr>
+  <?php endforeach ?>
+  </table>
+  <?php endif ?>
+  <?php if ($tryList): ?>
+  <div class="section-title">尝试中 (<?=count($tryList)?>)</div>
+  <table class="p-table"><tr><th>题目</th><th>最高分</th><th>尝试次数</th></tr>
+  <?php foreach($tryList as $p): ?>
+  <tr><td><a href="problem.php?id=<?=$p['problem_id']?>"><?=$p['problem_id']?></a></td><td><?=$p['best_score']?>/<?=$p['max_score']?></td><td><?=$p['attempts']?></td></tr>
+  <?php endforeach ?>
+  </table>
+  <?php endif ?>
+  <?php if (!$acList && !$tryList): ?><div class="empty">暂无提交记录.</div><?php endif ?>
+</div>
 
-<?php if (!$acList && !$tryList): ?>
-<div class="empty">暂无提交.</div>
-<?php endif ?>
+<!-- 提交记录 -->
+<div id="panel-subs" class="tab-panel">
+  <?php if ($recentSubs): ?>
+  <table class="p-table"><tr><th>#</th><th>题目</th><th>状态</th><th>分数</th><th>语言</th><th>时间</th></tr>
+  <?php foreach($recentSubs as $sub): $sc=strtolower($sub['status']); ?>
+  <tr>
+    <td><a href="submission.php?id=<?=$sub['id']?>"><?=$sub['id']?></a></td>
+    <td><a href="problem.php?id=<?=$sub['problem_id']?>"><?=$sub['problem_id']?></a></td>
+    <td style="color:<?=$colorMap[$sub['status']] ?? '#999'?>"><?=$sub['status']?></td>
+    <td><?=$sub['score']?></td>
+    <td><?=$sub['language']?></td>
+    <td style="color:#666;font-size:11px"><?=date('m-d H:i', strtotime($sub['created_at']))?></td>
+  </tr>
+  <?php endforeach ?>
+  </table>
+  <?php else: ?><div class="empty">暂无提交记录.</div><?php endif ?>
+</div>
+
+<!-- 文章 -->
+<div id="panel-articles" class="tab-panel">
+  <?php if ($userArts): ?>
+  <?php foreach($userArts as $a): ?>
+  <div class="card" style="padding:12px 16px;margin-bottom:8px">
+    <a href="article.php?id=<?=$a['id']?>" style="color:#fff;text-decoration:none;font-size:13px;font-weight:600"><?=htmlspecialchars($a['title'])?></a>
+    <?php if ($a['is_announcement']): ?><span style="font-size:10px;color:#ffab00;margin-left:6px">公告</span><?php endif; ?>
+    <span style="font-size:10px;color:<?=$a['is_public']?'#0c0':'#c90'?>;margin-left:6px"><?=$a['is_public']?'公开':'私密'?></span>
+    <div style="font-size:11px;color:#666;margin-top:4px"><?=date('Y-m-d H:i', strtotime($a['created_at']))?></div>
+  </div>
+  <?php endforeach ?>
+  <?php else: ?><div class="empty">暂无文章.</div><?php endif ?>
+</div>
+
+<?php if ($isOwner): ?>
+<!-- 信息设置 -->
+<div id="panel-settings" class="tab-panel">
+  <div style="display:flex;gap:28px;align-items:start;flex-wrap:wrap">
+    <div>
+      <div style="font-size:12px;color:#888;margin-bottom:8px">头像</div>
+      <div class="avatar-upload" onclick="document.getElementById('af').click()">
+        <img id="avImg" src="<?=htmlspecialchars($profile['avatar'] ?? '')?>" alt="">
+        <div class="overlay">更换</div>
+        <input type="file" id="af" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+      </div>
+      <div style="font-size:10px;color:#666;margin-top:5px">点击更换头像</div>
+    </div>
+    <div style="flex:1;min-width:280px">
+      <div style="font-size:12px;color:#888;margin-bottom:8px">格言</div>
+      <form method="POST" action="profile.php">
+        <textarea name="motto" rows="3" placeholder="写点格言吧..." style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#ddd;font-size:13px;padding:10px;outline:none;resize:vertical"><?=htmlspecialchars($profile['motto'] ?? '')?></textarea>
+        <button class="btn btn-sm" style="margin-top:8px">保存格言</button>
+      </form>
+    </div>
+  </div>
+  <div style="margin-top:16px;padding-top:14px;border-top:1px solid #222">
+    <a href="profile.php" class="btn btn-line btn-sm">完整编辑资料 →</a>
+  </div>
+</div>
+<?php endif; ?>
 
 <script>
+function showTab(name){
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+name));
+}
+async function uploadAvatar(input){
+  if(!input.files[0]) return;
+  const f=new FormData(); f.append('avatar', input.files[0]);
+  try{
+    const r=await fetch('api/avatar.php',{method:'POST',body:f});
+    let d; try{ d=await r.json(); }catch(e){ ztAlert('服务器异常','err'); return; }
+    if(d.ok){ document.getElementById('avImg').src=d.avatar; ztAlert('头像已更新','ok'); }
+    else ztAlert(d.message||'上传失败','err');
+  }catch(e){ ztAlert('上传失败','err'); }
+}
 async function setTag(){
   const inp=document.getElementById('tagInput'), msg=document.getElementById('tagMsg');
   const tag=inp.value.trim();
