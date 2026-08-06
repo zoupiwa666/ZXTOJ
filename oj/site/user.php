@@ -194,6 +194,7 @@ require __DIR__ . '/inc/header.php';
       <span id="fileMsg" style="font-size:11px;color:#999"></span>
     </div>
   </div>
+  <progress id="fileProg" value="0" max="100" style="width:100%;height:4px;display:none;margin-bottom:12px;accent-color:#5af;border:none;background:#222"></progress>
   <?php if ($myFiles): ?>
   <table class="p-table"><tr><th>文件名</th><th>大小</th><th>时间</th><th></th></tr>
   <?php foreach($myFiles as $f): ?>
@@ -252,17 +253,61 @@ async function uploadAvatar(input){
     else ztAlert(d.message||'上传失败','err');
   }catch(e){ ztAlert('上传失败','err'); }
 }
+// ===== 我的文件：分片并行上传（快速通道）=====
+const FCHUNK = 2*1024*1024, FCONC = 4;
+function calcFileMD5(file){
+  return new Promise(function(resolve){
+    var chunks=Math.ceil(file.size/2097152), spark=new SparkMD5.ArrayBuffer, idx=0, reader=new FileReader;
+    reader.onload=function(e){ spark.append(e.target.result); idx++; if(idx<chunks) loadNext(); else resolve(spark.end()); };
+    function loadNext(){ reader.readAsArrayBuffer(file.slice(idx*2097152,(idx+1)*2097152)); }
+    loadNext();
+  });
+}
 async function uploadFile(){
-  const inp=document.getElementById('fileInput'), msg=document.getElementById('fileMsg');
-  if(!inp.files[0]){ msg.textContent='请选择文件'; return; }
-  msg.textContent='上传中...';
-  const fd=new FormData(); fd.append('file', inp.files[0]);
+  const inp=document.getElementById('fileInput'), msg=document.getElementById('fileMsg'), prog=document.getElementById('fileProg');
+  const f=inp.files[0];
+  if(!f){ msg.textContent='请选择文件'; return; }
+  prog.style.display='block'; prog.value=0; msg.textContent='计算MD5...';
+  const total=Math.ceil(f.size/FCHUNK);
+  const md5=await calcFileMD5(f);
+  msg.textContent='检查断点...';
+  let cj={exist:[]};
   try{
-    const r=await fetch('api/file_upload.php',{method:'POST',body:fd});
-    const d=await r.json();
-    if(d.ok){ msg.textContent=d.message; setTimeout(()=>location.reload(),500); }
-    else msg.textContent=d.message||'上传失败';
-  }catch(e){ msg.textContent='上传失败'; }
+    const r=await fetch('api/fchunk_check.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5:md5,name:f.name})});
+    cj=await r.json();
+  }catch(e){}
+  const exist=new Set((cj.exist||[]).map(x=>parseInt(x)));
+  let done=exist.size;
+  const tasks=[]; for(let i=0;i<total;i++) if(!exist.has(i)) tasks.push(i);
+  if(tasks.length===0){ msg.textContent='已上传过，合并中...'; return merge(); }
+  prog.value=Math.round(done/total*100); msg.textContent='上传中 0% ('+done+'/'+total+')';
+  let ti=0;
+  async function worker(){
+    while(ti<tasks.length){
+      const i=tasks[ti++];
+      const blob=f.slice(i*FCHUNK, Math.min((i+1)*FCHUNK, f.size));
+      await new Promise(function(res,rej){
+        const fd=new FormData(); fd.append('file',blob); fd.append('md5',md5); fd.append('index',i);
+        const xhr=new XMLHttpRequest(); xhr.open('POST','api/fchunk_upload.php');
+        xhr.onload=function(){ if(xhr.status>=200&&xhr.status<300){ done++; prog.value=Math.round(done/total*100); msg.textContent='上传中 '+Math.round(done/total*100)+'% ('+done+'/'+total+')'; res(); } else rej(); };
+        xhr.onerror=function(){ rej(); };
+        xhr.send(fd);
+      });
+    }
+  }
+  try{
+    await Promise.all(Array.from({length:Math.min(FCONC,tasks.length)},function(){return worker();}));
+  }catch(e){ msg.textContent='部分分片失败，点击重试可续传'; return; }
+  await merge();
+  async function merge(){
+    msg.textContent='合并中...';
+    try{
+      const r=await fetch('api/fchunk_merge.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5:md5,name:f.name,total:total})});
+      const d=await r.json();
+      if(d.ok){ prog.value=100; msg.textContent=d.message; setTimeout(()=>location.reload(),500); }
+      else msg.textContent=d.message||'合并失败';
+    }catch(e){ msg.textContent='合并失败'; }
+  }
 }
 async function delFile(id, btn){
   if(!confirm('确定删除这个文件？')) return;
