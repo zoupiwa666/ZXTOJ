@@ -43,6 +43,15 @@ $arts->execute([$username]); $userArts = $arts->fetchAll();
 $colorMap = ['AC'=>'#25ad40','WA'=>'#ff4f4f','TLE'=>'#ffab00','RE'=>'#f8603a','MLE'=>'#d500f9','OLE'=>'#0091ea','CE'=>'#ff9100','SE'=>'#999','judging'=>'#09f','waiting'=>'#999','compiling'=>'#ffab00'];
 
 $isOwner = isLoggedIn() && currentUser()['id'] == $profile['id'];
+
+// 我的文件（仅本人）
+$myFiles = []; $usedBytes = 0;
+if ($isOwner) {
+    $mf = $pdo->prepare("SELECT * FROM user_files WHERE username=? ORDER BY id DESC");
+    $mf->execute([$username]); $myFiles = $mf->fetchAll();
+    $ub = $pdo->prepare("SELECT COALESCE(SUM(size),0) FROM user_files WHERE username=?");
+    $ub->execute([$username]); $usedBytes = intval($ub->fetchColumn());
+}
 $pageTitle = $username . ' - Zxt Super OJ';
 require __DIR__ . '/inc/header.php';
 ?>
@@ -118,7 +127,7 @@ require __DIR__ . '/inc/header.php';
   <div class="tab active" data-tab="practice" onclick="showTab('practice')">练习情况</div>
   <div class="tab" data-tab="subs" onclick="showTab('subs')">提交记录</div>
   <div class="tab" data-tab="articles" onclick="showTab('articles')">文章</div>
-  <?php if ($isOwner): ?><div class="tab" data-tab="settings" onclick="showTab('settings')">信息设置</div><?php endif; ?>
+  <?php if ($isOwner): ?><div class="tab" data-tab="files" onclick="showTab('files')">我的文件</div><div class="tab" data-tab="settings" onclick="showTab('settings')">信息设置</div><?php endif; ?>
 </div>
 
 <!-- 练习情况 -->
@@ -175,6 +184,33 @@ require __DIR__ . '/inc/header.php';
 </div>
 
 <?php if ($isOwner): ?>
+<!-- 我的文件 -->
+<div id="panel-files" class="tab-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <span style="font-size:12px;color:#888">已用空间: <b style="color:#fff"><?=number_format($usedBytes/1048576, 1)?>MB</b> / 256MB</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="file" id="fileInput" style="font-size:12px;color:#999">
+      <button class="btn btn-sm" onclick="uploadFile()">上传</button>
+      <span id="fileMsg" style="font-size:11px;color:#999"></span>
+    </div>
+  </div>
+  <?php if ($myFiles): ?>
+  <table class="p-table"><tr><th>文件名</th><th>大小</th><th>时间</th><th></th></tr>
+  <?php foreach($myFiles as $f): ?>
+  <tr>
+    <td style="word-break:break-all"><?=htmlspecialchars($f['filename'])?></td>
+    <td><?= $f['size']>=1048576 ? number_format($f['size']/1048576,1).'MB' : number_format($f['size']/1024,1).'KB' ?></td>
+    <td style="color:#666;font-size:11px"><?=date('m-d H:i', strtotime($f['created_at']))?></td>
+    <td style="white-space:nowrap">
+      <a class="btn btn-sm" href="api/file_download.php?id=<?=$f['id']?>">下载</a>
+      <button class="btn btn-sm btn-danger" onclick="delFile(<?=$f['id']?>, this)">删除</button>
+    </td>
+  </tr>
+  <?php endforeach ?>
+  </table>
+  <?php else: ?><div class="empty">还没有上传文件.</div><?php endif ?>
+</div>
+
 <!-- 信息设置 -->
 <div id="panel-settings" class="tab-panel">
   <div style="display:flex;gap:28px;align-items:start;flex-wrap:wrap">
@@ -215,6 +251,26 @@ async function uploadAvatar(input){
     if(d.ok){ document.getElementById('avImg').src=d.avatar; ztAlert('头像已更新','ok'); }
     else ztAlert(d.message||'上传失败','err');
   }catch(e){ ztAlert('上传失败','err'); }
+}
+async function uploadFile(){
+  const inp=document.getElementById('fileInput'), msg=document.getElementById('fileMsg');
+  if(!inp.files[0]){ msg.textContent='请选择文件'; return; }
+  msg.textContent='上传中...';
+  const fd=new FormData(); fd.append('file', inp.files[0]);
+  try{
+    const r=await fetch('api/file_upload.php',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){ msg.textContent=d.message; setTimeout(()=>location.reload(),500); }
+    else msg.textContent=d.message||'上传失败';
+  }catch(e){ msg.textContent='上传失败'; }
+}
+async function delFile(id, btn){
+  if(!confirm('确定删除这个文件？')) return;
+  const fd=new FormData(); fd.append('id',id);
+  const r=await fetch('api/file_delete.php',{method:'POST',body:fd});
+  const d=await r.json();
+  if(d.ok) location.reload();
+  else ztAlert(d.message||'删除失败','err');
 }
 async function setTag(){
   const inp=document.getElementById('tagInput'), msg=document.getElementById('tagMsg');
