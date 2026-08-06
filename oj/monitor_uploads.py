@@ -43,12 +43,54 @@ def get_conns():
             i += 1
     return conns
 
+# ===== PHP-FPM worker 停滞检测（502 场景：上传/文件接口卡死占 worker）=====
+STALL_URIS = ('fchunk_upload.php','file_upload.php','upload_package.php','chunk.php',
+              'tool_upload.php','fchunk_merge.php','merge.php','check.php','fchunk_check.php')
+PHP_STALL_SEC = 60   # 这些接口应秒级完成，超过 60s 视为卡死
+
+def get_php_workers():
+    workers = {}
+    try:
+        out = subprocess.run(['curl','-s','http://127.0.0.1:81/status?full'],
+                             capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        return workers
+    cur = None
+    for line in out.splitlines():
+        if line.startswith('pid:'):
+            cur = {'pid': line.split(':',1)[1].strip()}
+            workers[cur['pid']] = cur
+        elif cur is not None and ':' in line:
+            k, v = line.split(':', 1); k, v = k.strip(), v.strip()
+            if k in ('state','request duration','request URI'): cur[k] = v
+    return workers
+
+def check_php_workers(killed_workers):
+    workers = get_php_workers()
+    now = time.time()
+    for pid, w in workers.items():
+        if w.get('state') != 'Running': continue
+        uri = w.get('request URI','')
+        if not any(u in uri for u in STALL_URIS): continue
+        try: dur = float(w.get('request duration','0') or 0) / 1000000  # 微秒->秒
+        except: continue
+        if dur > PHP_STALL_SEC and now - killed_workers.get(pid, 0) > 120:
+            log('KILL stuck php-fpm worker pid=%s uri=%s dur=%.0fs' % (pid, uri, dur))
+            try:
+                os.kill(int(pid), 9)
+                log('  -> php worker killed (master 会自动拉起新 worker)')
+                killed_workers[pid] = now
+            except Exception as e:
+                log('  php kill fail: %s' % e)
+
 def main():
     log('== upload-stall monitor v2 started (bytes>%d, lastrcv>%dms) ==' % (KILL_BYTES, STALL_MS))
     killed_cache = {}   # (peer,port) -> kill 时间，30s 内不重复杀
+    killed_workers = {} # pid -> kill 时间，120s 内不重复杀
     while True:
         try:
             now = time.time()
+            check_php_workers(killed_workers)
             for c in get_conns():
                 key = (c['peer'], c['port'])
                 if c['bytes'] > KILL_BYTES and c['lastrcv'] > STALL_MS:
