@@ -100,7 +100,7 @@ require __DIR__ . '/inc/header.php';
     ?>
     <?php if ($canSetTag): ?>
     <div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      <input id="tagInput" placeholder="设置标签(最多5字)" value="<?=htmlspecialchars($profile['tag']??'')?>" maxlength="5" style="width:130px;padding:5px 8px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#ddd;font-size:12px;outline:none">
+      <input id="tagInput" class="no-float" placeholder="设置标签(最多5字)" value="<?=htmlspecialchars($profile['tag']??'')?>" maxlength="5" style="width:130px;padding:5px 8px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#ddd;font-size:12px;outline:none">
       <button class="btn btn-sm" onclick="setTag()">设置</button>
       <button class="btn btn-sm" onclick="clearTag()" <?=($profile['tag']??'')?'':'disabled'?>>清除</button>
       <span id="tagMsg" style="font-size:11px;color:#999"></span>

@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var t=(el.type||'').toLowerCase();
     if(['hidden','checkbox','radio','file','submit','button','color','range','date','time'].indexOf(t)>=0) return;
     var par=el.parentElement;
+    if(el.classList.contains('no-float')) return;   // 标记为普通输入框的跳过
     if(!par||par.querySelector('.float-label')) return;
     // 已有独立 <label> 的输入框跳过（如筛选栏），避免文字重复
     var hasLabel = par.querySelector('label') || (par.previousElementSibling && par.previousElementSibling.tagName==='LABEL');
