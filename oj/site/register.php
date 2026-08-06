@@ -18,7 +18,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         // Message 系统消息：欢迎新用户
         try {
             require_once __DIR__.'/message/functions.php';
-            msg_send($un, "🎉 恭喜 $un，你注册成功了！欢迎来到 ZXT Super OJ。");
+            msg_send($un, "🎉 恭喜 {$un}，你注册成功了！欢迎来到 ZXT Super OJ。");
         } catch (Exception $e) {}$pdo->prepare("UPDATE invite_codes SET use_count=use_count+1 WHERE id=?")->execute([$c['id']]);$ok='注册成功！<a href="login.php" style="color:#fff">登录</a>';}
   }
  }
