@@ -54,6 +54,9 @@ $me = currentUser();
   <!-- 左侧：搜索 + 好友列表 -->
   <div class="chat-side">
     <div class="search-box">
+  <?php if (isAdmin()): ?>
+  <a href="msg_admin.php" style="display:block;text-align:center;background:#1a3a5c;color:#5af;border:1px solid #2a5a8c;padding:5px 0;font-size:12px;text-decoration:none;border-radius:6px;margin-bottom:8px">📨 发布系统消息</a>
+  <?php endif; ?>
       <input id="searchKw" placeholder="搜索用户名..." onkeydown="if(event.key==='Enter')searchUsers()">
       <button class="btn btn-sm" style="width:100%;margin-top:6px" onclick="searchUsers()">搜索</button>
     </div>

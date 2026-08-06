@@ -15,8 +15,7 @@ $isAdmin = isAdmin();
   <?php endif; ?>
   <?php if ($isAdmin): ?>
   <a class="btn btn-sm" href="article_perms.php">权限管理</a>
-  <a class="btn btn-sm" href="message/admin.php" style="background:#1a3a5c;color:#5af">系统消息</a>
-  <?php endif; ?>
+    <?php endif; ?>
   <span style="font-size:11px;color:#888">新文章默认私密，仅作者和管理员可见</span>
 </div>
 
