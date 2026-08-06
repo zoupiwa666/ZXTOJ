@@ -3,6 +3,8 @@ $pageTitle = '聊天 - Zxt Super OJ';
 require __DIR__.'/inc/header.php';
 requireLogin();
 require_once __DIR__.'/inc/chat_tables.php';
+require_once __DIR__.'/message/functions.php';
+msg_ensure();
 $me = currentUser();
 ?>
 <style>

@@ -15,6 +15,8 @@ $stmt = $pdo->prepare(
    ORDER BY id DESC LIMIT 10");
 $stmt->execute([$me['id'], $fid, $fid, $me['id']]);
 $msgs = array_reverse($stmt->fetchAll());
+// 标记本会话消息已读
+$pdo->prepare("UPDATE chat_messages SET is_read=1 WHERE receiver_id=? AND sender_id=? AND is_read=0")->execute([$me['id'], $fid]);
 foreach ($msgs as &$m) { $m['content'] = render_mentions($m['content']); }
 // 数据库里只保留最新 10 条，更早的直接删除
 if (!empty($msgs)) {

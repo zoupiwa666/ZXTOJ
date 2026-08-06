@@ -163,13 +163,30 @@ input:focus,textarea:focus,select:focus{border-color:#5af;box-shadow:0 0 0 3px r
   <div class="btns">
     <?php if ($currentUser): ?>
       <span class="user" style="display:flex;align-items:center"><?= userBadge($currentUser["username"], $currentUser["avatar"] ?? null, 24) ?></span>
-      <a href="chat.php">聊天</a>
+      <a href="chat.php">聊天<span id="chatUnread" style="display:none;background:#f44;color:#fff;font-size:10px;min-width:16px;height:16px;line-height:16px;border-radius:8px;padding:0 5px;margin-left:4px;text-align:center;vertical-align:middle"></span></a>
       <a href="logout.php">退出</a>
     <?php else: ?>
       <a href="login.php">登录</a>
       <a href="register.php">注册</a>
     <?php endif; ?>
   </div>
+<script>
+// 未读消息红点轮询
+(function(){
+  var el=null;
+  function refresh(){
+    fetch('api/unread_count.php',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){
+      var n=(d&&d.unread)||0;
+      if(!el) el=document.getElementById('chatUnread');
+      if(!el) return;
+      if(n>0){ el.style.display='inline-block'; el.textContent=n>99?'99+':n; }
+      else el.style.display='none';
+    }).catch(function(){});
+  }
+  refresh();
+  setInterval(refresh, 8000);
+})();
+</script>
 </div>
 <div class="navbar">
   <a href="index.php" class="<?= $currentPage=='index.php'?'active':'' ?>">首页</a>

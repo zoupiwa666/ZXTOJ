@@ -14,7 +14,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   else{
    $s=$pdo->prepare("SELECT id FROM users WHERE username=?");$s->execute([$un]);
    if($s->fetch())$error='用户名已占用';
-   else{$h=password_hash($pw,PASSWORD_BCRYPT);$pdo->prepare("INSERT INTO users (username,password_hash,role) VALUES (?,?,'user')")->execute([$un,$h]);$pdo->prepare("UPDATE invite_codes SET use_count=use_count+1 WHERE id=?")->execute([$c['id']]);$ok='注册成功！<a href="login.php" style="color:#fff">登录</a>';}
+   else{$h=password_hash($pw,PASSWORD_BCRYPT);$pdo->prepare("INSERT INTO users (username,password_hash,role) VALUES (?,?,'user')")->execute([$un,$h]);
+        // Message 系统消息：欢迎新用户
+        try {
+            require_once __DIR__.'/message/functions.php';
+            msg_send($un, "🎉 恭喜 $un，你注册成功了！欢迎来到 ZXT Super OJ。");
+        } catch (Exception $e) {}$pdo->prepare("UPDATE invite_codes SET use_count=use_count+1 WHERE id=?")->execute([$c['id']]);$ok='注册成功！<a href="login.php" style="color:#fff">登录</a>';}
   }
  }
 }

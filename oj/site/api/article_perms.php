@@ -19,4 +19,9 @@ if (!$s->fetch()) { echo json_encode(['ok'=>false,'message'=>'用户不存在'])
 $pdo->prepare("INSERT INTO article_permissions (username, can_view, can_publish, can_edit, updated_by) VALUES (?,?,?,?,?)
                ON DUPLICATE KEY UPDATE can_view=VALUES(can_view), can_publish=VALUES(can_publish), can_edit=VALUES(can_edit), updated_by=VALUES(updated_by)")
     ->execute([$username, $canView, $canPub, $canEdit, currentUser()['username']]);
+// Message 通知：权限变化
+try {
+    require_once __DIR__.'/../message/functions.php';
+    msg_send($username, "你的文章权限已更新：查看=".($canView?'允许':'禁止')."，发布=".($canPub?'允许':'禁止')."，修改=".($canEdit?'允许':'禁止')."。");
+} catch (Exception $e) {}
 echo json_encode(['ok'=>true, 'message'=>"已更新 $username 的文章权限"]);
