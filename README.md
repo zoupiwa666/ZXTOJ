@@ -1,15 +1,35 @@
 # ZXT Super OJ
 
-一个可基于 Docker 一键部署的在线评测系统（Online Judge），支持 C/C++/Python3，内置聊天、头像、数据包上传等完整功能。
+一个可基于 Docker 一键部署的在线评测系统（Online Judge），支持 C/C++/Python3，内置流式评测、聊天、文章/题解、头像、用户名片等完整社区功能。
 
 ## ✨ 功能特性
 
-- 🖥️ **评测**：C / C++(14/17/20) / Python3，沙箱容器隔离，支持 CPU/内存限制
-- 💬 **聊天**：按用户名搜索、添加好友、实时消息（Markdown + KaTeX 渲染）
-- 👤 **头像**：全站用户名旁显示头像（上传自动生成 50×50 缩略图）
-- 📦 **数据包上传**：网页标准上传（500MB+）、分片直传（断点续传）、路径导入
-- 🚀 **开箱即用**：首次部署自动为示例题 P1000 生成测试数据
-- ⚡ **国内加速**：apt / pip 均使用阿里云镜像
+### 🖥️ 评测
+- C / C++(14/17/20) / Python3，沙箱容器隔离，CPU/内存限制
+- **流式评测**：`compiling` 编译状态，**每测完一个测试点立即推送**到页面
+- 重测 / 批量重测 / 批量删除提交记录（管理员）
+- 非 AC 测试点数据下载、提交记录筛选
+
+### 💬 社区
+- **聊天**：搜索/加好友、Markdown + KaTeX、长消息折叠、@提及用户（悬停出名片）
+- **文章**：Markdown 写作、默认私密、公告（管理员）、权限管理（查看/发布/修改）
+- **题解**：独立题解区、提交审核（管理员）、管理员开关新题解提交
+- **评论**：Markdown、分页（8条/页）、点赞/点踩、字体大小钳制
+- **@提及**：`@用户名` 自动渲染为用户链接 + 名片
+- **用户名片**：悬停用户名显示头像/格言/标签，点击进主页
+- **名字颜色 + 标签**：管理员紫色、普通用户棕色；管理员可给权限小于自己的用户设置标签（方块底色、白字、最多5字）
+
+### 🎨 界面
+- Font Awesome 高级矢量图标（本地离线）
+- 高级浮动输入框（浮动标签、聚焦光效）
+- 全站头像徽章（有头像显示图片、无头像字母占位）
+- 自定义网站图标 + 左上角圆形 Logo
+
+### 📦 其他
+- 数据包上传：标准上传（500MB+）/ 分片直传（断点续传）/ 路径导入 / scp 上传
+- 上传工具：`upload.bat`/`upload.sh`（HTTP 或 scp 模式，自定义端口）
+- 开箱即用：首次部署自动生成示例题 P1000 测试数据
+- 国内加速：apt / pip 使用阿里云镜像
 
 ## 🏗️ 架构
 
@@ -24,28 +44,27 @@
 │ zxt-db 数据库  │               (judge-pool xN)
 │ mariadb:11    │
 └───────────────┘
-                                       │ docker.sock
-                                       ▼
-                                  宿主沙箱容器
-                                 (judge-pool xN)
 ```
+
+- **数据库独立容器**（zxt-db / mariadb:11），与 web/评测机隔离，性能更好
+- 题目数据目录自动定位（任意部署路径）
 
 ## 📂 目录结构
 
 ```
 ZXTOJ/
-├── start.sh            # 一键启动脚本（支持 --rebuild）
+├── start.sh            # 一键启动脚本（--rebuild / --reset）
 ├── docker-compose.yml  # 编排文件（备用）
 ├── .env                # 配置（端口/CPU/内存/数据库密码）
 ├── judge/
 │   ├── Dockerfile      # 评测机镜像
-│   └── engine/         # 评测机代码（含沙箱镜像 Dockerfile）
+│   └── engine/         # 评测机代码 + 沙箱镜像
 ├── oj/
-│   ├── Dockerfile      # OJ 镜像 (nginx+php+mysql)
-│   ├── site/           # OJ 前端代码（含聊天/头像/工具）
-│   └── init.sql        # 数据库表结构
+│   ├── Dockerfile      # OJ 镜像 (nginx+php)
+│   ├── start.sh        # OJ 容器入口（纯 web）
+│   └── site/           # 前端代码（文章/聊天/题解/工具等）
 ├── data/problems/      # 题目数据（自动挂载 /data）
-└── oj-mysql/           # MySQL 数据持久化
+└── oj-mysql/           # 数据库数据（挂载到 zxt-db）
 ```
 
 ## 🚀 部署
@@ -53,32 +72,29 @@ ZXTOJ/
 ### 全新部署
 
 ```bash
-# 1. 克隆项目（任意路径均可，脚本会自动定位）
 git clone https://github.com/zoupiwa666/ZXTOJ.git
 cd ZXTOJ
-
-# 2. 一键启动（首次会自动构建所有镜像）
 sudo ./start.sh
 ```
 
-> 首次启动会交互式询问环境变量（评测机端口 / OJ 端口 / CPU / 内存 / 预热容器数 / 数据库密码），直接回车使用默认值即可。之后配置保存在 `.env`，再次启动不再询问。
+> 首次启动交互式询问（评测机端口 / OJ 端口 / CPU / 内存 / 预热容器数 / 数据库密码），回车用默认值。之后配置保存在 `.env`。
+> **自动创建上传用户 ojupload**（密码显示在启动信息，用于 scp 上传数据包）。
 
 ### 更新已有部署（重点！）
 
 ```bash
 cd ZXTOJ && sudo git pull
-
-# 重要：代码更新后必须用 --rebuild 强制重建镜像，否则旧镜像不生效！
-sudo ./start.sh --rebuild
+sudo ./start.sh --rebuild    # 必须带 --rebuild，强制重建镜像
 ```
 
-> ⚠️ **为什么必须 --rebuild**：评测相关修复（如 DATA_HOST_DIR 挂载、空数据保护）在镜像里，`start.sh` 默认只在镜像不存在时构建。代码更新后直接 `./start.sh` 会用旧镜像，评测会报 `dr status=failed`。**每次 `git pull` 后请带 `--rebuild`**。
+> ⚠️ 评测相关修复在镜像里，`git pull` 后不重建镜像会用旧版本导致评测异常（`dr status=failed`）。
 
 ### start.sh 参数
 
 ```
 ./start.sh            # 镜像存在则直接启动，不存在才构建
-./start.sh --rebuild  # 强制重新构建所有镜像（zxt-oj / zxt-judge / judge-sandbox）
+./start.sh --rebuild  # 强制重建所有镜像（zxt-oj / zxt-judge / judge-sandbox）
+./start.sh --reset    # 完全重置：删容器/镜像/数据库/数据/配置，全新部署（需输入 yes 确认）
 ./start.sh --help     # 帮助
 ```
 
@@ -94,21 +110,22 @@ JUDGE_POOL_SIZE=3      # 预热容器数
 # OJ
 OJ_PORT=18001          # OJ 访问端口
 JUDGE_URL=http://zxt-judge:8000   # OJ→评测机地址（容器网络内）
-DB_PASS=zxt_oj_pass_2026          # 内置数据库密码
+DB_PASS=zxt_oj_pass_2026          # 数据库密码
 ```
 
 ## 📖 使用指南
 
 ### 访问
-- **OJ 系统**：`http://服务器IP:你的OJ端口`（默认 18001），初始账号 `admin / admin123`
-- **评测机**：`http://服务器IP:你的评测端口`（默认 18000）
+- **OJ 系统**：`http://服务器IP:OJ端口`（默认 18001），初始账号 **admin / admin123**
+- **评测机**：`http://服务器IP:评测端口`（默认 18000）
 
-### 添加题目数据（三种方式）
-1. **网页标准上传**：题目编辑页 → 导入数据包 → 选文件 → 「标准上传」（支持 500MB+）
-2. **网页直传**：点「直传」（分片并行 + 断点续传，大文件推荐）
-3. **路径导入**：把 zip 放到服务器，填路径（如 `/tmp/xxx.zip`）
+### 添加题目数据
+1. **标准上传**：编辑页 → 导入数据包 → 选文件 → 标准上传（500MB+）
+2. **直传**：分片并行 + 断点续传（网络不稳推荐）
+3. **路径导入**：填服务器路径（容器内路径，如 `/data/packages/xxx.zip`）
+4. **scp 上传**：`scp -P 端口 包.zip ojupload@服务器IP:/部署目录/data/packages/` → 路径导入 `/data/packages/文件名.zip`
 
-数据包格式（zip）：
+数据包格式：
 ```
 P1000.zip
 ├── config.yaml      # name / time_limit / memory_limit / test_cases / scores
@@ -117,27 +134,24 @@ P1000.zip
 └── ...
 ```
 
-### 上传用户（scp 专用）
+### 文章 / 题解 / 评论
+- **文章**：导航「文章」→ 发布（默认私密，仅作者/管理员可见）；管理员可设置用户 查看/发布/修改 权限
+- **公告**：仅管理员可发，置顶显示在首页
+- **题解**：题目页「📘 题解」→ 题解区 → 提交题解（文章设为题解，需管理员审核）
+- **评论**：文章下方，Markdown 渲染，点赞/点踩
 
-每次部署时 `start.sh` 会自动创建 **`ojupload`** 上传用户，并在启动信息里显示密码（保存在 `data/.ojupload_pw`）。用它通过 scp 传数据包最稳定（不受 HTTP 限制）：
-
-```bash
-# Linux
-scp -P 端口(默认22) ./P1000.zip ojupload@服务器IP:/opt/oj-deploy/data/packages/
-# Windows
-scp -P 端口(默认22) D:\data\P1000.zip ojupload@服务器IP:/opt/oj-deploy/data/packages/
-```
-
-上传后到 OJ 编辑页「路径导入」填 `/data/packages/文件名.zip`。
-
-> 该用户只对 `data/packages/` 有写权限，仅用于上传数据包；建议部署后自行修改密码（`passwd ojupload`）。
+### 其他
+- **@提及**：在文章/评论/聊天输入 `@用户名`，存在则渲染为链接 + 名片
+- **用户名片**：悬停任何用户名，显示头像/格言/标签
+- **名字颜色**：管理员紫色、普通用户棕色
 
 ## 📝 注意事项
 
 1. **评测机需要 docker.sock 权限**：容器内创建沙箱容器
-2. **沙箱镜像 judge-sandbox** 由 start.sh 自动构建
-3. **题目数据**在 `data/problems/`（自动挂载到各容器 `/data`，路径自动识别）
-4. **OJ 内置 MySQL**：数据在 `oj-mysql/`，容器内 root 密码 = `$DB_PASS`
-5. **示例题 P1000**：首次部署自动生成 5 个测试点，可直接提交 `a,b=map(int,input().split()); print(a+b)` 体验 AC
-6. **停止服务**：`docker rm -f zxt-oj zxt-judge`
-7. **聊天消息**：只保留每会话最新 10 条，单条限 3.5KB，长消息可点击展开
+2. **数据库独立**：zxt-db（mariadb:11），数据在 `oj-mysql/`；start.sh 自动确保 admin 存在
+3. **题目数据**在 `data/problems/`（自动挂载，路径自动识别）
+4. **示例题 P1000**：自动生成 5 个测试点，可提交 `a,b=map(int,input().split()); print(a+b)` 体验 AC
+5. **停止服务**：`docker rm -f zxt-oj zxt-judge zxt-db`
+6. **聊天**：每会话保留最新 10 条，单条限 3.5KB
+7. **普通用户文章**：内容上限 100KB（管理员 1MB）
+8. **评论/聊天 HTML**：白名单净化，禁止 script/form/iframe，字体钳制 150px
