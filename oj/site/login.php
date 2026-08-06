@@ -2,7 +2,11 @@
 if($_SERVER['REQUEST_METHOD']==='POST'){
  $u=trim($_POST['username']??'');$p=$_POST['password']??'';
  $s=$pdo->prepare("SELECT * FROM users WHERE username=?");$s->execute([$u]);$user=$s->fetch();
- if($user&&password_verify($p,$user['password_hash'])){$_SESSION['user_id']=$user['id'];header('Location: /');exit;}
+ if($user&&password_verify($p,$user['password_hash'])){$_SESSION['user_id']=$user['id'];
+  $redir = $_GET['redirect'] ?? '';
+  if ($redir !== '' && strpos($redir, 'login.php') === false && strpos($redir, 'register.php') === false) header('Location: '.$redir);
+  else header('Location: /');
+  exit;}
  else $error='用户名或密码错误';
 }
 ?><!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Login - Zxt Super OJ</title>

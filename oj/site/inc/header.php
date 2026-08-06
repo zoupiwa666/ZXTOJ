@@ -4,6 +4,13 @@ require_once __DIR__ . '/auth.php';
 $currentUser = isLoggedIn() ? currentUser() : null;
 $currentPage = basename($_SERVER['PHP_SELF']);
 
+// 全站登录限制：未登录只能访问首页/登录/注册（静态资源不受影响）
+$publicPages = ['index.php', 'login.php', 'register.php'];
+if (!isLoggedIn() && !in_array($currentPage, $publicPages)) {
+    header('Location: login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
+
 // 确保用户标签字段存在（幂等）
 try { $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS tag VARCHAR(5) DEFAULT NULL"); } catch (Exception $e) {}
 
