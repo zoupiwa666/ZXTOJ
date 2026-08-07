@@ -23,3 +23,4 @@ oj/site/uploads/avatars/*
 # 上传用户密码（运行数据，不入库）
 data/.ojupload_pw
 data/packages/*
+data/.deepseek_key

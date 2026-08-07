@@ -104,7 +104,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <button class="btn">保存题目</button>
 </div></form>
 
-<?php if(!$isNew):?>
+<?php if(!$isNew): $aiKey = file_exists('/data/.deepseek_key') ? trim(@file_get_contents('/data/.deepseek_key')) : ''; ?>
 <!-- 导入 -->
 <div class="card"><h3>导入数据包 (已有 <span id="tcCount"><?=$tcCount?></span> 个测试点)</h3>
 <label class="file-zone" id="dz"><div style="font-size:20px">+</div><div style="font-size:12px">拖拽或点击上传 .zip / .tar.gz</div><div style="font-size:11px;color:#999" id="fn">未选择</div><input type="file" name="package" accept=".zip,.tar.gz,.tgz,.tar" id="pf"></label>
@@ -120,6 +120,56 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <div id="progressText" style="font-size:11px;color:#5af;text-align:center;display:none"></div>
 <div id="importStatus" style="margin-top:4px;font-size:12px;color:#999"></div>
 </div>
+
+<!-- AI 自动造数据 -->
+<div class="card">
+  <h3>🤖 AI 自动造数据（DeepSeek）</h3>
+  <div style="font-size:11px;color:#888;margin-bottom:10px">根据题面/时限/内存自动生成测试数据生成器与标准解法，服务器运行产出测试点</div>
+  <div style="margin-bottom:10px">
+    <label>DeepSeek API Key</label>
+    <input id="aiKey" type="password" value="<?=htmlspecialchars($aiKey ?? '')?>" placeholder="sk-..." style="width:100%">
+    <div style="font-size:10px;color:#666;margin-top:2px">key 仅保存在本服务器 data/.deepseek_key（勾选记住）</div>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+    <div style="flex:1;min-width:120px">
+      <label>生成组数</label>
+      <input id="aiCount" type="number" value="10" min="1" max="50" style="width:100%">
+    </div>
+    <div style="flex:1;min-width:120px;display:flex;align-items:center;gap:6px;padding-top:24px">
+      <input type="checkbox" id="aiCk" style="width:auto" onchange="document.getElementById('aiCkReq').disabled=!this.checked">
+      <span style="font-size:12px;color:#999">需要 checker（特殊判题）</span>
+    </div>
+  </div>
+  <div style="margin-bottom:12px">
+    <label>Checker 要求（可选，如：忽略行末空格、允许误差1e-6）</label>
+    <input id="aiCkReq" placeholder="例如：比较浮点数，误差不超过 1e-6" disabled style="width:100%">
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn" style="background:#1a3a5c;color:#5af" onclick="aiGen()">🤖 生成测试数据</button>
+    <label style="font-size:11px;color:#666;margin:0"><input type="checkbox" id="aiSaveKey" style="width:auto"> 记住 key</label>
+    <span id="aiMsg" style="font-size:12px;color:#999"></span>
+  </div>
+</div>
+
+<script>
+async function aiGen(){
+  const btn=event.target; btn.disabled=true;
+  const msg=document.getElementById('aiMsg'); msg.textContent='DeepSeek 生成中（约30秒）...';
+  const fd=new FormData();
+  fd.append('problem_id', <?=json_encode($pid)?>);
+  fd.append('api_key', document.getElementById('aiKey').value.trim());
+  fd.append('count', document.getElementById('aiCount').value);
+  fd.append('checker_req', document.getElementById('aiCk').checked ? (document.getElementById('aiCkReq').value.trim()||'按题目要求') : '');
+  fd.append('save_key', document.getElementById('aiSaveKey').checked ? '1':'0');
+  try{
+    const r=await fetch('api/ai_gen.php',{method:'POST',body:fd});
+    const d=await r.json();
+    msg.textContent=d.message||(d.ok?'完成':'失败');
+    msg.style.color = d.ok ? '#0c0' : '#c00';
+  }catch(e){ msg.textContent='生成失败: '+e.message; msg.style.color='#c00'; }
+  btn.disabled=false;
+}
+</script>
 
 <!-- 样例 -->
 <form method="POST"><input type="hidden" name="action" value="save_samples">
