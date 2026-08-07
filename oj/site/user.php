@@ -204,7 +204,6 @@ require __DIR__ . '/inc/header.php';
     <td style="color:#666;font-size:11px"><?=date('m-d H:i', strtotime($f['created_at']))?></td>
     <td style="white-space:nowrap">
       <a class="btn btn-sm" href="api/file_download.php?id=<?=$f['id']?>">下载</a>
-      <button class="btn btn-sm" onclick="copyFileLink(<?=$f['id']?>, this)">复制下载链接</button>
       <button class="btn btn-sm" style="background:#1a3a5c;color:#5af" onclick="shareFile(<?=$f['id']?>, this)">复制分享链接</button>
       <button class="btn btn-sm btn-danger" onclick="delFile(<?=$f['id']?>, this)">删除</button>
     </td>
@@ -357,10 +356,6 @@ async function shareFile(id, btn){
       ztAlert(d.message||'生成失败','err'); btn.disabled=false; btn.textContent='复制分享链接';
     }
   }catch(e){ ztAlert('生成失败','err'); btn.disabled=false; btn.textContent='复制分享链接'; }
-}
-async function copyFileLink(id, btn){
-  if(!btn.dataset.orig) btn.dataset.orig=btn.textContent;
-  copyText(location.origin + '/api/file_download.php?id=' + id, btn, '已复制下载链接');
 }
 async function delFile(id, btn){
   if(!confirm('确定删除这个文件？')) return;
