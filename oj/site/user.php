@@ -205,6 +205,7 @@ require __DIR__ . '/inc/header.php';
     <td style="white-space:nowrap">
       <a class="btn btn-sm" href="api/file_download.php?id=<?=$f['id']?>">下载</a>
       <button class="btn btn-sm" onclick="copyFileLink(<?=$f['id']?>, this)">复制下载链接</button>
+      <button class="btn btn-sm" style="background:#1a3a5c;color:#5af" onclick="shareFile(<?=$f['id']?>, this)">复制分享链接</button>
       <button class="btn btn-sm btn-danger" onclick="delFile(<?=$f['id']?>, this)">删除</button>
     </td>
   </tr>
@@ -320,10 +321,11 @@ async function uploadFile(){
   }
 }
 // 复制文本（http 非安全上下文用 fallback）
-function copyText(text, btn){
+function copyText(text, btn, okMsg){
+  okMsg = okMsg || '已复制下载链接';
   function done(ok){
-    if(btn){ btn.textContent=ok?'已复制':'复制失败'; setTimeout(function(){ btn.textContent='复制下载链接'; },1500); }
-    ztAlert(ok?'已复制下载链接':'复制失败', ok?'ok':'err');
+    if(btn){ btn.textContent=ok?okMsg:'复制失败'; setTimeout(function(){ btn.textContent=btn.dataset.orig||'复制下载链接'; },1500); }
+    ztAlert(ok?okMsg:'复制失败', ok?'ok':'err');
   }
   if(navigator.clipboard && window.isSecureContext){
     navigator.clipboard.writeText(text).then(function(){ done(true); }).catch(function(){ done(fallback()); });
@@ -341,8 +343,24 @@ function copyText(text, btn){
     }catch(e){ return false; }
   }
 }
+async function shareFile(id, btn){
+  btn.disabled=true; btn.textContent='生成中...';
+  try{
+    const fd=new FormData(); fd.append('id',id);
+    const r=await fetch('api/file_share_token.php',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok && d.url){
+      copyText(location.origin + '/' + d.url, btn, '已复制分享链接');
+      // 还原按钮文本（copyText 会设置）
+      btn.disabled=false;
+    } else {
+      ztAlert(d.message||'生成失败','err'); btn.disabled=false; btn.textContent='复制分享链接';
+    }
+  }catch(e){ ztAlert('生成失败','err'); btn.disabled=false; btn.textContent='复制分享链接'; }
+}
 async function copyFileLink(id, btn){
-  copyText(location.origin + '/api/file_download.php?id=' + id, btn);
+  if(!btn.dataset.orig) btn.dataset.orig=btn.textContent;
+  copyText(location.origin + '/api/file_download.php?id=' + id, btn, '已复制下载链接');
 }
 async function delFile(id, btn){
   if(!confirm('确定删除这个文件？')) return;

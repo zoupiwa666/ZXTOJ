@@ -46,8 +46,10 @@ function article_ensure_tables(): void {
             stored_name VARCHAR(255) NOT NULL,
             size BIGINT NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            KEY idx_user (username)
+            KEY idx_user (username),
+            UNIQUE KEY uq_share (share_token)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $pdo->exec("ALTER TABLE user_files ADD COLUMN IF NOT EXISTS share_token VARCHAR(32) DEFAULT NULL");
         // 题解字段（MariaDB 支持 ADD COLUMN IF NOT EXISTS）
         $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS is_solution TINYINT(1) DEFAULT 0");
         $pdo->exec("ALTER TABLE articles ADD COLUMN IF NOT EXISTS solution_problem VARCHAR(20) DEFAULT NULL");
