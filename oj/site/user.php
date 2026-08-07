@@ -203,8 +203,7 @@ require __DIR__ . '/inc/header.php';
     <td><?= $f['size']>=1048576 ? number_format($f['size']/1048576,1).'MB' : number_format($f['size']/1024,1).'KB' ?></td>
     <td style="color:#666;font-size:11px"><?=date('m-d H:i', strtotime($f['created_at']))?></td>
     <td style="white-space:nowrap">
-      <a class="btn btn-sm" href="api/file_download.php?id=<?=$f['id']?>">下载</a>
-      <button class="btn btn-sm" style="background:#1a3a5c;color:#5af" onclick="shareFile(<?=$f['id']?>, this)">复制分享链接</button>
+      <a class="btn btn-sm" href="/files/<?=$username?>/<?=htmlspecialchars($f['stored_name'])?>" download="<?=htmlspecialchars($f['filename'])?>">下载</a>
       <button class="btn btn-sm" style="background:#3a2a5c;color:#9af" onclick="copyDirectLink('<?=$username?>', '<?=htmlspecialchars($f['stored_name'])?>', this)">复制直链</button>
       <button class="btn btn-sm btn-danger" onclick="delFile(<?=$f['id']?>, this)">删除</button>
     </td>
@@ -346,21 +345,6 @@ function copyText(text, btn, okMsg){
 function copyDirectLink(user, stored, btn){
   var url = location.origin + '/files/' + user + '/' + stored;
   copyText(url, btn, '已复制直链');
-}
-async function shareFile(id, btn){
-  btn.disabled=true; btn.textContent='生成中...';
-  try{
-    const fd=new FormData(); fd.append('id',id);
-    const r=await fetch('api/file_share_token.php',{method:'POST',body:fd});
-    const d=await r.json();
-    if(d.ok && d.url){
-      copyText(location.origin + '/' + d.url, btn, '已复制分享链接');
-      // 还原按钮文本（copyText 会设置）
-      btn.disabled=false;
-    } else {
-      ztAlert(d.message||'生成失败','err'); btn.disabled=false; btn.textContent='复制分享链接';
-    }
-  }catch(e){ ztAlert('生成失败','err'); btn.disabled=false; btn.textContent='复制分享链接'; }
 }
 async function delFile(id, btn){
   if(!confirm('确定删除这个文件？')) return;

@@ -144,6 +144,19 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
     <label>Checker 要求（可选，如：忽略行末空格、允许误差1e-6）</label>
     <input id="aiCkReq" placeholder="例如：比较浮点数，误差不超过 1e-6" disabled style="width:100%">
   </div>
+  <div style="margin-bottom:12px">
+    <label>标准解法 std（可选，留空则由 DeepSeek 生成；将用它生成每组数据的标准输出）</label>
+    <div style="display:flex;gap:8px;align-items:stretch">
+      <select id="aiStdLang" style="flex:0 0 130px;width:130px">
+        <option value="python3">Python3</option>
+        <option value="cpp17">C++17</option>
+        <option value="cpp14">C++14</option>
+        <option value="cpp20">C++20</option>
+        <option value="c">C</option>
+      </select>
+      <textarea id="aiStd" rows="4" placeholder="粘贴你的标程代码（从 stdin 读入、stdout 输出答案）..." style="flex:1"></textarea>
+    </div>
+  </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button class="btn" style="background:#1a3a5c;color:#5af" onclick="aiGen()">🤖 生成测试数据</button>
     <label style="font-size:11px;color:#666;margin:0"><input type="checkbox" id="aiSaveKey" style="width:auto"> 记住 key</label>
@@ -168,6 +181,8 @@ async function aiGen(){
   fd.append('count', document.getElementById('aiCount').value);
   fd.append('need_checker', document.getElementById('aiCk').checked ? '1':'0');
   fd.append('checker_req', document.getElementById('aiCkReq').value.trim());
+  fd.append('std_code', document.getElementById('aiStd').value);
+  fd.append('std_lang', document.getElementById('aiStdLang').value);
   fd.append('save_key', document.getElementById('aiSaveKey').checked ? '1':'0');
   try{
     const r=await fetch('api/ai_gen.php',{method:'POST',body:fd});

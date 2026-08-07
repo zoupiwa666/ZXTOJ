@@ -10,6 +10,8 @@ $key = trim($_POST['api_key'] ?? '');
 $n = min(max(intval($_POST['count'] ?? 10), 1), 50);
 $needCk = (($_POST['need_checker'] ?? '0') === '1');
 $checkerReq = trim($_POST['checker_req'] ?? '');
+$stdCode = $_POST['std_code'] ?? '';
+$stdLang = in_array($_POST['std_lang'] ?? 'python3', ['python3','c','cpp14','cpp17','cpp20']) ? $_POST['std_lang'] : 'python3';
 
 if ($pid === '') { echo json_encode(['ok'=>false,'message'=>'缺少题目编号']); exit; }
 $s = $pdo->prepare("SELECT problem_id FROM problems WHERE problem_id=?"); $s->execute([$pid]);
@@ -29,6 +31,7 @@ $taskFile = "/tmp/ai_gen/$taskId.json";
 file_put_contents($taskFile, json_encode([
     'task_id' => $taskId, 'pid' => $pid, 'api_key' => $key,
     'count' => $n, 'need_checker' => $needCk, 'checker_req' => $checkerReq,
+    'std_code' => $stdCode, 'std_lang' => $stdLang,
     'created' => time(),
 ], JSON_UNESCAPED_UNICODE));
 chmod($taskFile, 0600);
