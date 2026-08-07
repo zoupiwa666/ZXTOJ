@@ -1,5 +1,6 @@
 <?php
-// 重测：管理员对已提交代码重新评测，结果覆盖到同一提交
+// 重测：管理员对已提交代码重新评测，结果覆盖到同一提交（异步，不占 PHP-FPM worker）
+// 原理：将提交重置为 waiting，交回 oj_worker.py 队列异步评测，前端轮询自动刷新结果
 require __DIR__.'/../inc/config.php';
 require __DIR__.'/../inc/auth.php';
 requireRole('admin');
@@ -8,72 +9,12 @@ header('Content-Type: application/json; charset=utf-8');
 $sid = intval($_POST['submission_id'] ?? 0);
 if ($sid <= 0) { echo json_encode(['ok'=>false,'message'=>'参数错误']); exit; }
 
-$s = $pdo->prepare("SELECT * FROM submissions WHERE id=?");
-$s->execute([$sid]); $sub = $s->fetch();
-if (!$sub) { echo json_encode(['ok'=>false,'message'=>'提交不存在']); exit; }
+$s = $pdo->prepare("SELECT id FROM submissions WHERE id=?");
+$s->execute([$sid]);
+if (!$s->fetch()) { echo json_encode(['ok'=>false,'message'=>'提交不存在']); exit; }
 
-// 题目时限
-$p = $pdo->prepare("SELECT time_limit, memory_limit FROM problems WHERE problem_id=?");
-$p->execute([$sub['problem_id']]); $prob = $p->fetch();
-$tl = floatval($prob['time_limit'] ?? 2.0);
-$ml = intval($prob['memory_limit'] ?? 128);
-
-// 重置为评测中
-$pdo->prepare("UPDATE submissions SET status='judging', judge_task_id=NULL, details='[]', score=0, passed_tests=0, total_time=0, peak_memory=0 WHERE id=?")
+// 重置为 waiting，worker 会在数秒内自动接管评测（不再同步轮询，立即返回）
+$pdo->prepare("UPDATE submissions SET status='waiting', judge_task_id=NULL, details='[]', score=0, passed_tests=0, total_time=0, peak_memory=0 WHERE id=?")
     ->execute([$sid]);
 
-// 提交评测任务
-$ch = curl_init($JUDGE_URL . '/judge_by_problem');
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true,
-    CURLOPT_POSTFIELDS => json_encode([
-        'problem_id' => $sub['problem_id'], 'language' => $sub['language'],
-        'code' => $sub['code'], 'time_limit' => $tl, 'memory_limit' => $ml,
-    ]),
-    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    CURLOPT_TIMEOUT => 20,
-]);
-$resp = json_decode(curl_exec($ch), true); curl_close($ch);
-$taskId = $resp['task_id'] ?? '';
-if (!$taskId) {
-    $pdo->prepare("UPDATE submissions SET status='SE' WHERE id=?")->execute([$sid]);
-    echo json_encode(['ok'=>false,'message'=>'评测机无响应，已标记 SE']); exit;
-}
-$pdo->prepare("UPDATE submissions SET judge_task_id=? WHERE id=?")->execute([$taskId, $sid]);
-
-// 轮询评测结果（最多 300 秒）
-$deadline = time() + 300;
-$result = null;
-while (time() < $deadline) {
-    sleep(1);
-    $ch = curl_init($JUDGE_URL . '/result/' . $taskId);
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10]);
-    $result = json_decode(curl_exec($ch), true); curl_close($ch);
-    if ($result && isset($result['status']) && !in_array($result['status'], ['pending','running'])) break;
-}
-if (!$result || !isset($result['status']) || in_array($result['status'], ['pending','running'])) {
-    echo json_encode(['ok'=>false,'message'=>'评测超时，稍后刷新页面查看']); exit; // 保持 judging，页面 stuck 修复逻辑会接管
-}
-
-// 更新提交（覆盖结果）
-$results = $result['results'] ?? [];
-if ($result['status'] === 'compile_error') {
-    $pdo->prepare("UPDATE submissions SET status='CE', score=0, passed_tests=0, peak_memory=0, total_time=0, details=? WHERE id=?")
-        ->execute([json_encode([['verdict'=>'CE','passed'=>false,'score'=>0,'error'=>$result['compile_error'] ?? '编译错误']]), $sid]);
-    echo json_encode(['ok'=>true,'status'=>'CE','score'=>0]); exit;
-}
-$status = 'AC'; $totalScore = 0; $passed = 0; $sumTime = 0; $peakMem = 0;
-foreach ($results as $r) {
-    $totalScore += floatval($r['score'] ?? 0);
-    $sumTime    += floatval($r['time_used'] ?? 0);
-    $mem         = floatval($r['memory_used'] ?? 0);
-    if ($mem > $peakMem) $peakMem = $mem;
-    if (!empty($r['passed'])) $passed++;
-    if (empty($r['passed']) && $status === 'AC') $status = $r['verdict'] ?? 'WA';
-}
-if ($passed === count($results) && $passed > 0) $status = 'AC';
-if (count($results) === 0) $status = 'SE';
-$pdo->prepare("UPDATE submissions SET status=?, score=?, passed_tests=?, peak_memory=?, total_time=?, details=? WHERE id=?")
-    ->execute([$status, $totalScore, $passed, $peakMem, round($sumTime,3), json_encode($results), $sid]);
-
-echo json_encode(['ok'=>true,'status'=>$status,'score'=>$totalScore]);
+echo json_encode(['ok'=>true,'message'=>'已提交重测，结果将自动更新']);
