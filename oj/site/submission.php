@@ -29,8 +29,22 @@ if (in_array($sub['status'], ['waiting','judging']) && $sub['judge_task_id']) {
         // results 为空无法判定，不覆盖状态（保持 waiting/judging，由 worker 接管），避免误标 SE
         if (count($results) === 0) { /* 跳过更新 */ }
         else {
+            // details 只存概要字段，剥离 output/expected_output 大文本（防超 max_allowed_packet）
+            $lean = [];
+            foreach ($results as $r) {
+                $lean[] = [
+                    'test_case_index' => $r['test_case_index'] ?? null,
+                    'verdict' => $r['verdict'] ?? 'SE',
+                    'passed' => !empty($r['passed']),
+                    'score' => floatval($r['score'] ?? 0),
+                    'time_used' => $r['time_used'] ?? null,
+                    'memory_used' => $r['memory_used'] ?? null,
+                    'exit_code' => $r['exit_code'] ?? null,
+                    'error' => $r['error'] ?? null,
+                ];
+            }
             $pdo->prepare("UPDATE submissions SET status=?,score=?,passed_tests=?,peak_memory=?,total_time=?,details=? WHERE id=?")
-                ->execute([$status, $totalScore, $passed, $peakMem, round($sumTime,3), json_encode($results), $sub['id']]);
+                ->execute([$status, $totalScore, $passed, $peakMem, round($sumTime,3), json_encode($lean), $sub['id']]);
         }
         $_POST = $_POST_orig;
         // 重新查询

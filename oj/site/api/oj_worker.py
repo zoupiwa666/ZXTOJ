@@ -19,6 +19,10 @@ def api(path, data=None, timeout=120):
 
 def save_partial(conn, sid, index, verdict, score, time_used, memory_used, passed, error=None):
     """保存单个测试点结果到 details JSON"""
+    try:
+        conn.ping(reconnect=True)   # 网络抖动断连时自动重连
+    except Exception:
+        pass
     cur = conn.cursor()
     cur.execute("SELECT details FROM submissions WHERE id=%s", (sid,))
     row = cur.fetchone()
@@ -96,20 +100,28 @@ def process_submission(sid, username, problem_id, language, code):
                 time.sleep(3)
 
         # 拉最终结果完善细节
+        try:
+            conn.ping(reconnect=True)
+        except Exception:
+            pass
         result = api('/result/' + task_id)
         if result.get('results'):
             rs = result['results']
             status = 'CE' if result.get('status') == 'compile_error' else ('AC' if result.get('status') == 'completed' else 'SE')
             score = passed = 0; t = 0; mem = 0
             for r in rs:
-                score += float(r.get('score', 0)); t += float(r.get('time_used', 0))
-                m = float(r.get('memory_used', 0)); 
+                score += float(r.get('score', 0)); t += float(r.get('time_used', 0) or 0)
+                m = float(r.get('memory_used', 0) or 0)
                 if m > mem: mem = m
                 if r.get('passed'): passed += 1
                 if not r.get('passed') and status == 'AC': status = r.get('verdict', 'WA')
             if rs and passed == len(rs): status = 'AC'
+            # details 只存概要字段：剥离 output/expected_output 大文本，
+            # 防止 details JSON 超过 MySQL max_allowed_packet 导致连接被断（100分SE/统计丢失的根因）
+            KEYS = ('test_case_index','verdict','passed','score','time_used','memory_used','exit_code','error')
+            rs_lean = [{k: r.get(k) for k in KEYS} for r in rs]
             cur.execute("UPDATE submissions SET status=%s,score=%s,passed_tests=%s,peak_memory=%s,total_time=%s,details=%s WHERE id=%s",
-                (status, score, passed, mem, round(t,3), json.dumps(rs), sid))
+                (status, score, passed, mem, round(t,3), json.dumps(rs_lean), sid))
             conn.commit()
             print(f"[W] #{sid}: {status} {score}")
         conn.close()
@@ -123,9 +135,11 @@ def process_submission(sid, username, problem_id, language, code):
             row = cur.fetchone()
             det = [x for x in (json.loads(row['details']) if row and row['details'] else []) if x]
             if det and all(x.get('passed') for x in det):
-                total = sum(float(x.get('score', 0)) for x in det)
-                cur.execute("UPDATE submissions SET status='AC', passed_tests=%s, score=%s WHERE id=%s",
-                            (len(det), round(total, 2), sid))
+                total = sum(float(x.get('score', 0) or 0) for x in det)
+                tt = sum(float(x.get('time_used', 0) or 0) for x in det)
+                pm = max([float(x.get('memory_used', 0) or 0) for x in det] or [0])
+                cur.execute("UPDATE submissions SET status='AC', passed_tests=%s, score=%s, total_time=%s, peak_memory=%s WHERE id=%s",
+                            (len(det), round(total, 2), round(tt, 3), round(pm, 2), sid))
             else:
                 cur.execute("UPDATE submissions SET status='SE' WHERE id=%s", (sid,))
             conn.commit(); conn.close()
