@@ -98,6 +98,14 @@ else
   ok "OJ 镜像已存在"
 fi
 
+# 5.5 构建造数据容器镜像
+if [ "$FORCE_REBUILD" = "1" ] || ! docker images zxt-datamaker:latest --format "{{.ID}}" | grep -q .; then
+  info "构建造数据容器 zxt-datamaker..."
+  docker build -t zxt-datamaker:latest ./datamaker || { err "zxt-datamaker 构建失败"; exit 1; }
+else
+  ok "zxt-datamaker 镜像已存在"
+fi
+
 # 6. 准备数据目录和配置
 mkdir -p data/problems data/packages oj-mysql
 chmod 777 data data/packages oj-mysql 2>/dev/null
@@ -317,6 +325,18 @@ fi
 docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASS'; ALTER USER 'root'@'%' IDENTIFIED BY '$DB_PASS'; FLUSH PRIVILEGES;" >/dev/null 2>&1 || true
 ok "数据库 root 密码已强制为 .env 配置"
 
+# 7.5 启动造数据容器
+info "启动造数据容器 zxt-datamaker..."
+docker rm -f zxt-datamaker 2>/dev/null || true
+docker run -d --name zxt-datamaker \
+  --network $NETWORK \
+  -p ${DATAMAKER_PORT:-18002}:8001 \
+  -e DATA_ROOT=/data/problems \
+  -v "$(pwd)/data":/data \
+  --restart unless-stopped \
+  zxt-datamaker:latest >/dev/null
+ok "zxt-datamaker 容器启动"
+
 # 8. 启动 OJ 容器
 info "启动 OJ 容器..."
 docker rm -f zxt-oj 2>/dev/null || true
@@ -328,6 +348,7 @@ docker run -d --name zxt-oj \
   -e DB_HOST=zxt-db -e DB_PORT=3306 -e DB_USER=root -e DB_PASS=$DB_PASS \
   -v "$(pwd)/oj/site":/var/www/oj \
   -v "$(pwd)/data":/data \
+  -v "$(pwd)/oj/nginx.conf":/etc/nginx/sites-enabled/default \
   --restart unless-stopped \
   zxt-oj:latest >/dev/null
 ok "OJ 容器启动"

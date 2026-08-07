@@ -205,6 +205,7 @@ require __DIR__ . '/inc/header.php';
     <td style="white-space:nowrap">
       <a class="btn btn-sm" href="api/file_download.php?id=<?=$f['id']?>">下载</a>
       <button class="btn btn-sm" style="background:#1a3a5c;color:#5af" onclick="shareFile(<?=$f['id']?>, this)">复制分享链接</button>
+      <button class="btn btn-sm" style="background:#3a2a5c;color:#9af" onclick="copyDirectLink('<?=$username?>', '<?=htmlspecialchars($f['stored_name'])?>', this)">复制直链</button>
       <button class="btn btn-sm btn-danger" onclick="delFile(<?=$f['id']?>, this)">删除</button>
     </td>
   </tr>
@@ -341,6 +342,10 @@ function copyText(text, btn, okMsg){
       return ok;
     }catch(e){ return false; }
   }
+}
+function copyDirectLink(user, stored, btn){
+  var url = location.origin + '/files/' + user + '/' + stored;
+  copyText(url, btn, '已复制直链');
 }
 async function shareFile(id, btn){
   btn.disabled=true; btn.textContent='生成中...';
