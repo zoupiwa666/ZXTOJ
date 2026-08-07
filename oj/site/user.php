@@ -204,6 +204,7 @@ require __DIR__ . '/inc/header.php';
     <td style="color:#666;font-size:11px"><?=date('m-d H:i', strtotime($f['created_at']))?></td>
     <td style="white-space:nowrap">
       <a class="btn btn-sm" href="api/file_download.php?id=<?=$f['id']?>">下载</a>
+      <button class="btn btn-sm" onclick="copyFileLink(<?=$f['id']?>, this)">复制下载链接</button>
       <button class="btn btn-sm btn-danger" onclick="delFile(<?=$f['id']?>, this)">删除</button>
     </td>
   </tr>
@@ -317,6 +318,31 @@ async function uploadFile(){
       else msg.textContent=d.message||'合并失败';
     }catch(e){ msg.textContent='合并失败'; }
   }
+}
+// 复制文本（http 非安全上下文用 fallback）
+function copyText(text, btn){
+  function done(ok){
+    if(btn){ btn.textContent=ok?'已复制':'复制失败'; setTimeout(function(){ btn.textContent='复制下载链接'; },1500); }
+    ztAlert(ok?'已复制下载链接':'复制失败', ok?'ok':'err');
+  }
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){ done(true); }).catch(function(){ done(fallback()); });
+  } else {
+    done(fallback());
+  }
+  function fallback(){
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px';
+      document.body.appendChild(ta); ta.select();
+      const ok=document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    }catch(e){ return false; }
+  }
+}
+async function copyFileLink(id, btn){
+  copyText(location.origin + '/api/file_download.php?id=' + id, btn);
 }
 async function delFile(id, btn){
   if(!confirm('确定删除这个文件？')) return;
