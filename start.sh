@@ -278,6 +278,7 @@ if ! docker ps -a --format '{{.Names}}' | grep -qx zxt-db; then
   docker run -d --name zxt-db \
     --network $NETWORK \
     -e MARIADB_ROOT_PASSWORD=$DB_PASS \
+    --max-allowed-packet=64M \
     -v "$(pwd)/oj-mysql":/var/lib/mysql \
     --restart unless-stopped \
     mariadb:11 >/dev/null

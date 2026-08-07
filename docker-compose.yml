@@ -6,6 +6,7 @@ services:
     container_name: zxt-db
     environment:
       - MARIADB_ROOT_PASSWORD=${DB_PASS:-zxt_oj_pass_2026}
+    command: --max-allowed-packet=64M
     volumes:
       - ./oj-mysql:/var/lib/mysql
     restart: unless-stopped
