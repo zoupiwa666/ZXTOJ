@@ -21,6 +21,7 @@ class GenRequest(BaseModel):
     count: int = 10
     need_checker: bool = False
     checker_req: str = ""
+    extra_req: str = ""          # 用户额外要求（细粒度数据需求）
     std_code: str = ""          # 用户提供的 std，非空则 AI 不生成解法
     std_lang: str = "python3"   # python3 | cpp17
     title: str = ""
@@ -89,7 +90,9 @@ def gen_data(req: GenRequest):
             f"题面: {req.description}\n输入格式: {req.input_format}\n"
             f"输出格式: {req.output_format}\n提示: {req.hints}\n")
 
-    fields = ('"gen_code":"Python3 数据生成器代码。每次运行向 stdout 输出一组随机、合法的输入数据'
+    fields = ('"analysis":"（轻度思考）先用 3-5 句简要分析：题目的关键约束、数据分布策略（边界/随机/大数据/特殊构造）、'
+              '如何保证 {n} 组数据有区分度。只写要点，不要废话。"'
+              ',"gen_code":"Python3 数据生成器代码。每次运行向 stdout 输出一组随机、合法的输入数据'
               '（覆盖边界与大数据），不要输出任何多余内容。要求每组运行结果具有随机区分度，'
               f'并覆盖 {n} 组数据规模的多样性"')
     if user_std:
@@ -97,7 +100,8 @@ def gen_data(req: GenRequest):
     else:
         std_note = "请同时生成标准解法 sol_code（从 stdin 读输入、向 stdout 输出答案）。"
         fields += ',"sol_code":"Python3 标准解法代码。从 stdin 读取输入，向 stdout 输出正确答案，不要输出多余内容"'
-    fields += ',"config_yaml":"yaml 文本，含 name/time_limit/memory_limit 字段"'
+    fields += ('",config_yaml":"yaml 文本，含 name/time_limit/memory_limit/test_cases 字段；'
+               '评分使用默认模式，写 scoring_mode: default，不需要写 scores 数组（每个测试点默认平分）"')
     if req.need_checker:
         ck_req = req.checker_req.strip() or "按题意标准比对，必要时放宽浮点误差"
         fields += (',"checker_code":"Python3 特殊判题 checker 代码。必须定义函数 check(input, output, expected)，'
@@ -105,8 +109,12 @@ def gen_data(req: GenRequest):
                    '返回 True/False，或返回 (是否通过:bool, 提示信息:str, 得分占比:float)。'
                    f'要求：{ck_req}。不要写 main 或读文件"')
 
+    extra_note = ""
+    if req.extra_req.strip():
+        extra_note = f"\n用户对数据的额外要求（务必逐条满足）：{req.extra_req.strip()}\n"
+
     prompt = ("你是 OJ 出题助手。根据以下题目信息生成测试数据构造代码。\n\n" + desc + "\n"
-              + std_note + "\n"
+              + std_note + "\n" + extra_note
               + "请严格只返回一个 JSON 对象（禁止 markdown 代码块、禁止任何解释文字、禁止多余字段），格式：\n{"
               + fields + "}\n"
               + f"共需生成 {n} 组测试数据。")
@@ -132,6 +140,9 @@ def gen_data(req: GenRequest):
     except Exception:
         raise HTTPException(502, "DeepSeek 返回内容无法解析为 JSON（已强制 json_object 仍异常）")
 
+    analysis = (gen.get("analysis") or "").strip()
+    if analysis:
+        print(f"[gen] 思考摘要: {analysis[:200]}")
     gen_code = (gen.get("gen_code") or "").strip()
     if not gen_code:
         raise HTTPException(502, "DeepSeek 未返回 gen_code")
@@ -194,10 +205,10 @@ def gen_data(req: GenRequest):
         m = re.search(r"name\s*:\s*(.+)", yaml_txt)
         if m:
             cfg_name = m.group(1).strip()
-        scores = ", ".join([str(score_each)] * n)
+        # 默认评分模式：每个测试点默认平分（.score 文件已写），config.yaml 无需 scores 数组
         open(os.path.join(out_dir, "config.yaml"), "w", encoding="utf-8").write(
             f"name: {cfg_name}\ntime_limit: {req.time_limit}\nmemory_limit: {req.memory_limit}\n"
-            f"test_cases: {n}\nscores: [{scores}]\n")
+            f"test_cases: {n}\nscoring_mode: default\n")
         if ck_code:
             open(os.path.join(out_dir, "checker.py"), "w", encoding="utf-8").write(ck_code)
         elif os.path.exists(os.path.join(out_dir, "checker.py")):

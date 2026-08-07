@@ -37,6 +37,7 @@ $payload = [
     'count'         => intval($task['count']),
     'need_checker'  => !empty($task['need_checker']),
     'checker_req'   => $task['checker_req'] ?? '',
+    'extra_req'     => $task['extra_req'] ?? '',
     'std_code'      => $task['std_code'] ?? '',
     'std_lang'      => $task['std_lang'] ?? 'python3',
     'title'         => $prob['title'],

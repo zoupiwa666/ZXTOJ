@@ -157,6 +157,10 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
       <textarea id="aiStd" rows="4" placeholder="粘贴你的标程代码（从 stdin 读入、stdout 输出答案）..." style="flex:1"></textarea>
     </div>
   </div>
+  <div style="margin-bottom:12px">
+    <label>额外要求（可选，可提出细粒度数据需求，如：第1组用极限大数据、多组n=1的边界、生成回文串数据）</label>
+    <input id="aiExtra" placeholder="例如：前 3 组用最大数据规模，中间几组随机小数据，最后一组构造最坏情况" style="width:100%">
+  </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button class="btn" style="background:#1a3a5c;color:#5af" onclick="aiGen()">🤖 生成测试数据</button>
     <label style="font-size:11px;color:#666;margin:0"><input type="checkbox" id="aiSaveKey" style="width:auto"> 记住 key</label>
@@ -181,6 +185,7 @@ async function aiGen(){
   fd.append('count', document.getElementById('aiCount').value);
   fd.append('need_checker', document.getElementById('aiCk').checked ? '1':'0');
   fd.append('checker_req', document.getElementById('aiCkReq').value.trim());
+  fd.append('extra_req', document.getElementById('aiExtra').value.trim());
   fd.append('std_code', document.getElementById('aiStd').value);
   fd.append('std_lang', document.getElementById('aiStdLang').value);
   fd.append('save_key', document.getElementById('aiSaveKey').checked ? '1':'0');
