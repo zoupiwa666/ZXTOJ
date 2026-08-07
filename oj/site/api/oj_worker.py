@@ -81,13 +81,19 @@ def process_submission(sid, username, problem_id, language, code):
                 print(f"[W] #{sid} 测试点{idx+1}: {data.get('verdict','SE')}")
         except Exception as e:
             print(f"[W] #{sid} stream: {e}")
-        # 如果 SSE 没拿到 done，再拉一次 result 确认
+        # 如果 SSE 没拿到 done，轮询 result 直到终态
+        # （长评测场景：judge /stream 有 60s 上限，评测未完成时流会断开，
+        #   必须继续等结果，否则提交会永久卡在中间态 compiling/judging）
         if not done:
-            try:
-                final_check = api('/result/' + task_id)
-                if final_check.get('status') not in ('pending','running'):
-                    done = True
-            except: pass
+            for _ in range(100):   # 最多等 300s
+                try:
+                    final_check = api('/result/' + task_id)
+                    if final_check.get('status') not in ('pending','running'):
+                        done = True
+                        break
+                except Exception:
+                    pass
+                time.sleep(3)
 
         # 拉最终结果完善细节
         result = api('/result/' + task_id)

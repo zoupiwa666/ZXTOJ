@@ -69,7 +69,7 @@ async def stream_results(task_id: str):
     async def event_generator():
         sent = set()
         last_status = None
-        for _ in range(600):
+        for _ in range(3000):   # 60s -> 300s，覆盖长评测
             prog = task_progress.get(task_id)
             if prog is None:
                 await asyncio.sleep(0.1)
