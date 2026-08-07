@@ -46,7 +46,7 @@ if [ -f .env ]; then
 fi
 JUDGE_PORT=${JUDGE_PORT:-18000}
 OJ_PORT=${OJ_PORT:-18001}
-JUDGE_CPU_LIMIT=${JUDGE_CPU_LIMIT:-0.5}
+JUDGE_CPU_LIMIT=${JUDGE_CPU_LIMIT:-2}
 JUDGE_MEM_LIMIT=${JUDGE_MEM_LIMIT:-512m}
 JUDGE_POOL_SIZE=${JUDGE_POOL_SIZE:-3}
 DB_PASS=${DB_PASS:-zxt_oj_pass_2026}
@@ -122,8 +122,8 @@ if [ ! -f .env ]; then
   read -p "OJ 端口 [默认 18001]: " inp
   OJ_PORT=${inp:-18001}
 
-  read -p "沙箱 CPU 限制(核) [默认 0.5]: " inp
-  JUDGE_CPU_LIMIT=${inp:-0.5}
+  read -p "沙箱 CPU 限制(核) [默认 2]: " inp
+  JUDGE_CPU_LIMIT=${inp:-2}
 
   read -p "沙箱内存限制 [默认 512m]: " inp
   JUDGE_MEM_LIMIT=${inp:-512m}
