@@ -29,6 +29,28 @@ if (isLoggedIn()) {
 } else {
     $problems = $pdo->query("SELECT * FROM problems WHERE visibility='public' ORDER BY id")->fetchAll();
 }
+
+// 搜索：按题目名/编号过滤 + 关联度排序
+$q = trim($_GET['q'] ?? '');
+if ($q !== '') {
+    $qLower = mb_strtolower($q);
+    $problems = array_values(array_filter($problems, function($p) use ($qLower) {
+        return mb_stripos($p['problem_id'], $qLower) !== false
+            || mb_stripos($p['title'], $qLower) !== false;
+    }));
+    usort($problems, function($a, $b) use ($qLower) {
+        $score = function($p) use ($qLower) {
+            $pid = mb_strtolower($p['problem_id']);
+            $title = mb_strtolower($p['title']);
+            if ($pid === $qLower) return 0;              // 编号完全匹配
+            if (strpos($pid, $qLower) === 0) return 1;   // 编号前缀
+            if (strpos($title, $qLower) === 0) return 2; // 标题前缀
+            return 3;                                    // 其他包含
+        };
+        $sa = $score($a); $sb = $score($b);
+        return $sa === $sb ? strcmp($a['problem_id'], $b['problem_id']) : $sa - $sb;
+    });
+}
 ?>
 <style>
 .p-table{width:100%;border-collapse:collapse;font-size:13px}
@@ -44,6 +66,12 @@ if (isLoggedIn()) {
 </style>
 <h1 class="page-title">题库</h1>
 <?php if (isAdmin()): ?><div style="margin-bottom:16px"><a href="edit.php" class="btn btn-sm">+ 新建题目</a></div><?php endif ?>
+<form method="GET" action="problems.php" style="margin-bottom:16px;display:flex;gap:8px;max-width:420px">
+  <input type="text" name="q" class="no-float" value="<?=htmlspecialchars($q)?>" placeholder="搜索题目名或编号..." style="flex:1;padding:8px 12px;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#ddd;font-size:13px;outline:none">
+  <button class="btn btn-sm" type="submit">搜索</button>
+  <?php if ($q !== ''): ?><a class="btn btn-sm btn-line" href="problems.php">清除</a><?php endif; ?>
+</form>
+<?php if ($q !== ''): ?><div style="font-size:12px;color:#888;margin-bottom:12px">搜索 "<?=htmlspecialchars($q)?>"：找到 <?=count($problems)?> 道题</div><?php endif; ?>
 <table class="p-table">
 <tr><th>编号</th><th>标题</th><th>创建者</th><th>时限</th><th>内存</th><?php if(isAdmin()):?><th></th><?php endif?></tr>
 <?php foreach($problems as $p):
