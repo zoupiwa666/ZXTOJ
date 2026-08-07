@@ -26,9 +26,12 @@ if (in_array($sub['status'], ['waiting','judging']) && $sub['judge_task_id']) {
             if (empty($r['passed']) && $status === 'AC') $status = $r['verdict'] ?? 'WA';
         }
         if (count($results) > 0 && $passed === count($results)) $status = 'AC';
-        if (count($results) === 0) $status = 'SE';
-        $pdo->prepare("UPDATE submissions SET status=?,score=?,passed_tests=?,peak_memory=?,total_time=?,details=? WHERE id=?")
-            ->execute([$status, $totalScore, $passed, $peakMem, round($sumTime,3), json_encode($results), $sub['id']]);
+        // results 为空无法判定，不覆盖状态（保持 waiting/judging，由 worker 接管），避免误标 SE
+        if (count($results) === 0) { /* 跳过更新 */ }
+        else {
+            $pdo->prepare("UPDATE submissions SET status=?,score=?,passed_tests=?,peak_memory=?,total_time=?,details=? WHERE id=?")
+                ->execute([$status, $totalScore, $passed, $peakMem, round($sumTime,3), json_encode($results), $sub['id']]);
+        }
         $_POST = $_POST_orig;
         // 重新查询
         $stmt = $pdo->prepare("SELECT * FROM submissions WHERE id = ?");

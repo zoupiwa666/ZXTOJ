@@ -115,11 +115,23 @@ def process_submission(sid, username, problem_id, language, code):
         conn.close()
     except Exception as e:
         print(f"[W] #{sid} error: {e}")
+        # 写库失败不直接判 SE：重连后按 details 判定（评测可能已全部 AC，仅最终写库连接断开）
         try:
             conn = pymysql.connect(**DB)
-            conn.cursor().execute("UPDATE submissions SET status='SE' WHERE id=%s", (sid,))
+            cur = conn.cursor(pymysql.cursors.DictCursor)
+            cur.execute("SELECT details, score FROM submissions WHERE id=%s", (sid,))
+            row = cur.fetchone()
+            det = [x for x in (json.loads(row['details']) if row and row['details'] else []) if x]
+            if det and all(x.get('passed') for x in det):
+                total = sum(float(x.get('score', 0)) for x in det)
+                cur.execute("UPDATE submissions SET status='AC', passed_tests=%s, score=%s WHERE id=%s",
+                            (len(det), round(total, 2), sid))
+            else:
+                cur.execute("UPDATE submissions SET status='SE' WHERE id=%s", (sid,))
             conn.commit(); conn.close()
-        except: pass
+            print(f"[W] #{sid} 写库异常已恢复，按 details 判定: {'AC' if det and all(x.get('passed') for x in det) else 'SE'}")
+        except Exception as e2:
+            print(f"[W] #{sid} 恢复失败: {e2}")
 
 def main():
     print("[W] OJ Worker started (3 threads)")
