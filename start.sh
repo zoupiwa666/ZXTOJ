@@ -353,6 +353,18 @@ docker run -d --name zxt-oj \
   zxt-oj:latest >/dev/null
 ok "OJ 容器启动"
 
+# 8.5 启动造数据容器（内网专用，不映射公网端口；挂载共享 /data 直接写测试数据）
+info "启动造数据容器 zxt-datamaker..."
+docker rm -f zxt-datamaker 2>/dev/null || true
+docker run -d --name zxt-datamaker \
+  --network $NETWORK \
+  -e DATAMAKER_PORT=8000 \
+  -v "$(pwd)/data":/data \
+  --memory 1g --cpus 1 --pids-limit 128 \
+  --restart unless-stopped \
+  zxt-datamaker:latest >/dev/null
+ok "造数据容器启动"
+
 # 9. 等待 OJ 就绪
 info "等待 OJ 启动..."
 for i in $(seq 1 30); do
@@ -382,9 +394,11 @@ ok "Worker 已启动"
 # 12. 健康检查
 info "最终健康检查..."
 JUDGE_OK=$(curl -s http://localhost:$JUDGE_PORT/health 2>/dev/null | grep -o '"status":"ok"' | head -1)
+DM_OK=$(docker exec zxt-datamaker curl -s http://localhost:8000/health 2>/dev/null | grep -o '"status":"ok"' | head -1)
 OJ_OK=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$OJ_PORT/ 2>/dev/null)
 [ -n "$JUDGE_OK" ] && ok "评测机健康" || err "评测机异常"
 [ "$OJ_OK" = "200" ] && ok "OJ 正常" || err "OJ 异常"
+[ -n "$DM_OK" ] && ok "造数据容器健康" || err "造数据容器异常"
 
 echo ""
 echo -e "${GREEN}========================================${NC}"

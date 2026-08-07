@@ -27,6 +27,18 @@ services:
       - /tmp/judge_shared:/tmp/judge_shared
     restart: unless-stopped
 
+  datamaker:
+    build: ./datamaker
+    container_name: zxt-datamaker
+    ports:
+      - "${DATAMAKER_PORT:-18002}:8000"   # 容器内 uvicorn 监听 8000（Dockerfile ENV）
+    environment:
+      - DATAMAKER_PORT=8000
+      - DATA_ROOT=/data/problems
+    volumes:
+      - /data:/data
+    restart: unless-stopped
+
   oj:
     build: ./oj
     container_name: zxt-oj

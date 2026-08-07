@@ -11,7 +11,8 @@ $n = min(max(intval($_POST['count'] ?? 10), 1), 50);
 $needCk = (($_POST['need_checker'] ?? '0') === '1');
 $checkerReq = trim($_POST['checker_req'] ?? '');
 $stdCode = $_POST['std_code'] ?? '';
-$stdLang = in_array($_POST['std_lang'] ?? 'python3', ['python3','c','cpp14','cpp17','cpp20']) ? $_POST['std_lang'] : 'python3';
+$stdLang = $_POST['std_lang'] ?? 'python3';
+if (!in_array($stdLang, ['python3','c','cpp14','cpp17','cpp20'])) $stdLang = 'python3';
 
 if ($pid === '') { echo json_encode(['ok'=>false,'message'=>'缺少题目编号']); exit; }
 $s = $pdo->prepare("SELECT problem_id FROM problems WHERE problem_id=?"); $s->execute([$pid]);
