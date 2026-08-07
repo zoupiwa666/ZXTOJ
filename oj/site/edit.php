@@ -149,25 +149,57 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
     <label style="font-size:11px;color:#666;margin:0"><input type="checkbox" id="aiSaveKey" style="width:auto"> 记住 key</label>
     <span id="aiMsg" style="font-size:12px;color:#999"></span>
   </div>
+  <div id="aiBarWrap" style="display:none;margin-top:10px">
+    <progress id="aiBar" value="0" max="100" style="width:100%;height:4px;accent-color:#5af;border:none;background:#222"></progress>
+    <div id="aiStep" style="font-size:11px;color:#5af;text-align:center;margin-top:4px"></div>
+  </div>
 </div>
 
 <script>
 async function aiGen(){
   const btn=event.target; btn.disabled=true;
-  const msg=document.getElementById('aiMsg'); msg.textContent='DeepSeek 生成中（约30秒）...';
+  const msg=document.getElementById('aiMsg');
+  const barWrap=document.getElementById('aiBarWrap'), bar=document.getElementById('aiBar'), step=document.getElementById('aiStep');
+  msg.style.color='#999'; msg.textContent='提交中...';
+  barWrap.style.display='block'; bar.value=0; step.textContent='正在启动任务';
   const fd=new FormData();
   fd.append('problem_id', <?=json_encode($pid)?>);
   fd.append('api_key', document.getElementById('aiKey').value.trim());
   fd.append('count', document.getElementById('aiCount').value);
-  fd.append('checker_req', document.getElementById('aiCk').checked ? (document.getElementById('aiCkReq').value.trim()||'按题目要求') : '');
+  fd.append('need_checker', document.getElementById('aiCk').checked ? '1':'0');
+  fd.append('checker_req', document.getElementById('aiCkReq').value.trim());
   fd.append('save_key', document.getElementById('aiSaveKey').checked ? '1':'0');
   try{
     const r=await fetch('api/ai_gen.php',{method:'POST',body:fd});
     const d=await r.json();
-    msg.textContent=d.message||(d.ok?'完成':'失败');
-    msg.style.color = d.ok ? '#0c0' : '#c00';
-  }catch(e){ msg.textContent='生成失败: '+e.message; msg.style.color='#c00'; }
-  btn.disabled=false;
+    if(!d.ok){ msg.textContent=d.message; msg.style.color='#c00'; btn.disabled=false; barWrap.style.display='none'; return; }
+    msg.textContent=d.message+'，后台生成中...';
+    pollAi(d.task_id, btn, msg, bar, barWrap, step);
+  }catch(e){ msg.textContent='启动失败: '+e.message; msg.style.color='#c00'; btn.disabled=false; barWrap.style.display='none'; }
+}
+async function pollAi(taskId, btn, msg, bar, barWrap, step){
+  let tries=0, last='';
+  const t=setInterval(async ()=>{
+    tries++;
+    try{
+      const r=await fetch('api/ai_gen_status.php?task_id='+encodeURIComponent(taskId));
+      const d=await r.json();
+      if(d.status==='queued'||d.status==='running'){
+        step.textContent=(d.step||'处理中')+(d.progress>0?' '+d.progress+'%':'');
+        bar.value=d.progress||0;
+        if(d.message!==last){ last=d.message; msg.textContent=d.message; }
+      } else if(d.status==='done'){
+        clearInterval(t); msg.textContent=d.message; msg.style.color='#0c0';
+        step.textContent='100% 完成'; bar.value=100;
+        setTimeout(()=>location.reload(),2000);
+      } else if(d.status==='error'){
+        clearInterval(t); msg.textContent=d.message; msg.style.color='#c00';
+        btn.disabled=false; barWrap.style.display='none';
+      }
+    }catch(e){
+      if(tries>120){ clearInterval(t); msg.textContent='查询状态失败，请刷新页面查看'; msg.style.color='#c00'; btn.disabled=false; }
+    }
+  },2000);
 }
 </script>
 
