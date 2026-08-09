@@ -2,6 +2,7 @@
 import sys, os, json, subprocess, time, resource, argparse, traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from perf_counter import PerfCounters, INS_NS, SYSCALL_NS, PF_NS
 
 V_AC, V_WA, V_TLE, V_MLE, V_RE, V_OLE, V_CE, V_SE = "AC","WA","TLE","MLE","RE","OLE","CE","SE"
 
@@ -28,6 +29,10 @@ def compile_code(workdir, lang, shared_dir):
     if r.returncode != 0: return False, r.stderr or r.stdout
     return True, None
 
+ICTIME = "/usr/local/bin/ictime"   # 确定性计时包装器（enable_on_exec，无 attach 竞态）
+ICTIME_EXISTS = os.path.exists(ICTIME)
+import uuid as _uuid
+
 def run_case_sync(lang, workdir, shared_dir, inp, tl, ml, input_file=None):
     if input_file and os.path.exists(input_file):
         inp = open(input_file, 'r', encoding='utf-8', errors='replace').read()
@@ -36,20 +41,37 @@ def run_case_sync(lang, workdir, shared_dir, inp, tl, ml, input_file=None):
         "cpp17":[f"{shared_dir}/solution"],"cpp20":[f"{shared_dir}/solution"],
         "python3":["python3", f"{workdir}/solution.py"],
     }
-    cmd = cmds.get(lang)
-    if not cmd: return {"output":"","time_used":0,"memory_used":0,"exit_code":None,"verdict":V_SE,"error":"不支持"}
+    base = cmds.get(lang)
+    if not base: return {"output":"","time_used":0,"memory_used":0,"exit_code":None,"verdict":V_SE,"error":"不支持"}
     try:
-        start = time.time()
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, cwd=shared_dir)
-        # 内存监控：轮询 /proc/<pid>/status 的 VmHWM（峰值内存），单位 kB
         import threading
+        start = time.time()
         peak_kb = [0]
         stop_ev = threading.Event()
+        use_ictime = ICTIME_EXISTS
+        ins_file = pid_file = None
+        pc = None
+        if use_ictime:
+            tok = _uuid.uuid4().hex[:6]
+            ins_file = os.path.join(shared_dir, f"ins_{tok}.txt")
+            pid_file = os.path.join(shared_dir, f"pid_{tok}.txt")
+            cmd = [ICTIME, f"--out={ins_file}", f"--pidfile={pid_file}", "--"] + base
+        else:
+            cmd = base
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, cwd=shared_dir)
+        # 确定性计时：ictime（enable_on_exec 无竞态）优先；老镜像回退 PerfCounters
+        if not use_ictime:
+            pc = PerfCounters(proc.pid)
+        # 内存监控目标 pid：ictime 模式下读 pidfile（solution 进程），否则直接 proc.pid
+        mon_pid = [proc.pid]
         def _mem_monitor():
             while not stop_ev.is_set():
+                if use_ictime and pid_file and os.path.exists(pid_file):
+                    try: mon_pid[0] = int(open(pid_file).read().strip())
+                    except Exception: pass
                 try:
-                    with open(f'/proc/{proc.pid}/status') as f:
+                    with open(f'/proc/{mon_pid[0]}/status') as f:
                         for line in f:
                             if line.startswith('VmHWM'):
                                 v = int(line.split()[1])
@@ -61,18 +83,48 @@ def run_case_sync(lang, workdir, shared_dir, inp, tl, ml, input_file=None):
         mon = threading.Thread(target=_mem_monitor, daemon=True)
         mon.start()
         try:
-            out, err = proc.communicate(input=inp.encode() if inp else None, timeout=tl)
+            out, err = proc.communicate(input=inp.encode() if inp else None, timeout=max(tl*2, tl+5))
         except subprocess.TimeoutExpired:
             proc.kill(); proc.wait()
             stop_ev.set(); mon.join(timeout=1)
+            if pc: pc.close()
             return {"output":"","time_used":tl,"memory_used":round(peak_kb[0]/1024,2),"exit_code":None,"verdict":V_TLE,"error":"运行超时"}
         stop_ev.set(); mon.join(timeout=1)
-        elapsed = round(time.time()-start, 3)
+        # 模型时间（确定性）优先；不可用时回退墙钟
+        model_ns = None
+        counts = None
+        if use_ictime and ins_file and os.path.exists(ins_file):
+            try:
+                kv = {}
+                for line in open(ins_file).read().strip().splitlines():
+                    if '=' in line:
+                        k, v = line.split('=', 1); kv[k.strip()] = int(v.strip())
+                ins = kv.get('INS', 0); pf = kv.get('PF', 0)
+                counts = {'instructions': ins, 'syscalls': 0, 'page_faults': pf}
+                model_ns = ins * INS_NS + pf * PF_NS
+            except Exception:
+                model_ns = None
+        if model_ns is None and pc is not None:
+            model_ns = pc.model_time_ns()
+            counts = pc.counts()
+        if pc: pc.close()
+        for f in (ins_file, pid_file):
+            if f and os.path.exists(f):
+                try: os.remove(f)
+                except Exception: pass
+        if model_ns is not None:
+            elapsed = round(model_ns / 1e9, 3)
+        else:
+            elapsed = round(time.time()-start, 3)
         output = out.decode(errors="replace")
         err_output = err.decode(errors="replace")
         mem = round(peak_kb[0] / 1024, 2)  # kB -> MB
         verdict = V_AC; error = None
         if mem > ml: verdict=V_MLE; error=f"内存超限: {mem:.1f}MB > {ml}MB"
+        elif model_ns is not None and model_ns / 1e9 > tl:
+            ins = (counts or {}).get('instructions', 0)
+            pf = (counts or {}).get('page_faults', 0)
+            verdict=V_TLE; error='运行超时(指令模型 {0:.3f}s > {1}s, ins={2}, pf={3})'.format(elapsed, tl, ins, pf)
         elif proc.returncode != 0:
             verdict=V_RE; error=f"运行时错误 (exit={proc.returncode})"
             if err_output: error += f"\n{err_output[:300]}"

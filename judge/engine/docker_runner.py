@@ -53,7 +53,10 @@ class ContainerPool:
                "--memory", str(CONTAINER_MEMORY_LIMIT),
                "--memory-swap", str(CONTAINER_MEMORY_LIMIT),
                "--cpus", str(CONTAINER_CPU_LIMIT), "--pids-limit", "64",
-               "--security-opt", "no-new-privileges:true", "--cap-drop", "ALL",
+               "--security-opt", "no-new-privileges:true",
+               "--security-opt", "seccomp=unconfined",   # 默认 seccomp 拦截 perf_event_open，放开（容器已无网络/无特权/只读，风险可控）
+               "--cap-drop", "ALL",
+               "--cap-add", "PERFMON",   # perf_event_open 指令计数（确定性评测）
                "--read-only", "--tmpfs", "/tmp:size=64m,nosuid",
                "-v", f"{SHARED_HOST_DIR}:{SHARED_CONTAINER_DIR}",
                "-v", f"{HOST_DATA_DIR}:/data:ro",
