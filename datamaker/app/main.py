@@ -329,7 +329,7 @@ class ChatMsgReq(BaseModel):
     user_msg: str
 
 @app.get("/health")
-def health():
+async def health():
     return {"status": "ok", "service": "zxt-datamaker", "sessions": len(sessions)}
 
 @app.post("/gen_data")
@@ -350,7 +350,7 @@ def gen_data(req: GenRequest):
 
 # ---------- 聊天工作台 ----------
 @app.post("/chat/start")
-def chat_start(req: ChatStartReq):
+async def chat_start(req: ChatStartReq):
     pid = re.sub(r"[^a-zA-Z0-9_-]", "", req.problem_id)
     if not pid:
         raise HTTPException(400, "缺少题目编号")
@@ -364,7 +364,7 @@ def chat_start(req: ChatStartReq):
     return {"ok": True, "session_id": sid}
 
 @app.post("/chat/message")
-def chat_message(req: ChatMsgReq):
+async def chat_message(req: ChatMsgReq):
     sid = req.session_id
     if sid not in sessions:
         raise HTTPException(404, "会话不存在或已过期")
@@ -383,9 +383,11 @@ def chat_message(req: ChatMsgReq):
     return {"ok": True, "session_id": sid}
 
 @app.get("/chat/events")
-def chat_events(session_id: str, since: int = 0):
+async def chat_events(session_id: str, since: int = 0):
     if session_id not in sessions:
         raise HTTPException(404, "会话不存在")
     evs = [e for e in events[session_id] if e["seq"] >= since]
-    done = bool(sessions[session_id].get("last_result")) or any(e["type"] == "error" for e in evs)
-    return {"events": evs, "done": done}
+    # 限量返回：一次最多 300 条（防止大会话事件全量传输拖慢线程/网络），前端持续轮询补齐
+    evs = evs[:300]
+    done = bool(sessions[session_id].get("last_result")) or any(e["type"] == "error" for e in events[session_id])
+    return {"events": evs, "done": done, "next_since": evs[-1]["seq"] + 1 if evs else since}
