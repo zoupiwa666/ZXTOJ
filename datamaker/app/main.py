@@ -122,7 +122,10 @@ def build_prompt(sid, n):
         fields += (',"checker_code":"Python3 特殊判题 checker 代码。必须定义函数 check(input, output, expected)，'
                    '参数均为字符串：input=测试输入、output=选手输出、expected=标准答案。'
                    '返回 True/False，或返回 (是否通过:bool, 提示信息:str, 得分占比:float)。'
-                   f'要求：{ck_req}。不要写 main 或读文件"')
+                   '【关键要求】只验证题目明确要求的条件（合法性/唯一性/数值误差等），'
+                   '绝不自行添加题面没有的额外约束或对输出格式的臆测；'
+                   '对 expected 标准答案必须返回 True（它是正确解法的输出）。'
+                   f'需要特殊判定的规则：{ck_req}。不要写 main 或读文件"')
     extra_note = ""
     if s["extra_req"].strip():
         extra_note = f"\n用户对数据的额外要求（务必逐条满足）：{s['extra_req'].strip()}\n"
@@ -280,6 +283,22 @@ def do_generate(sid):
                 f"name: {cfg_name}\ntime_limit: {s['time_limit']}\nmemory_limit: {s['memory_limit']}\n"
                 f"test_cases: {n}\nscoring_mode: default\n")
             if ck_code:
+                # 自检：用已生成的标准答案 .out 跑 checker，必须全部通过才落盘（防止 AI 自创约束误杀标准答案）
+                try:
+                    ns = {}
+                    exec(ck_code, ns)
+                    ck_fn = ns.get("check")
+                    if not callable(ck_fn):
+                        raise RuntimeError("checker 缺少可调用函数 check(input, output, expected)")
+                    for si in range(1, ok_n + 1):
+                        it = open(os.path.join(out_dir, f"{si}.in"), encoding="utf-8", errors="replace").read()
+                        ot = open(os.path.join(out_dir, f"{si}.out"), encoding="utf-8", errors="replace").read()
+                        r = ck_fn(it, ot, ot)
+                        passed = r if isinstance(r, bool) else (bool(r[0]) if isinstance(r, (list, tuple)) else bool(r))
+                        if not passed:
+                            raise RuntimeError(f"checker 自检失败：标准答案 .out 第{si}组未通过（checker 逻辑与题意不符，可能自创了题面没有的约束）")
+                except Exception as e:
+                    raise RuntimeError(f"checker 自检失败: {e}")
                 open(os.path.join(out_dir, "checker.py"), "w", encoding="utf-8").write(ck_code)
             elif os.path.exists(os.path.join(out_dir, "checker.py")):
                 os.remove(os.path.join(out_dir, "checker.py"))
@@ -373,6 +392,9 @@ async def chat_message(req: ChatMsgReq):
         raise HTTPException(400, "消息不能为空")
     sessions[sid]["messages"].append({"role": "user", "content": msg})
     push_event(sid, "user", msg)
+    # 新一轮生成：记录本轮事件起点、清除上轮结果（events 的 done 只按本轮判定）
+    sessions[sid]["round_start"] = _event_seq[sid]
+    sessions[sid]["last_result"] = None
     # 用户提出修改时，把最新代码作为上下文提示（帮助 AI 基于现有代码修改）
     if sessions[sid]["gen_code"]:
         sessions[sid]["messages"].append({
@@ -386,8 +408,10 @@ async def chat_message(req: ChatMsgReq):
 async def chat_events(session_id: str, since: int = 0):
     if session_id not in sessions:
         raise HTTPException(404, "会话不存在")
-    evs = [e for e in events[session_id] if e["seq"] >= since]
+    rs = sessions[session_id].get("round_start", 0)
+    evs = [e for e in events[session_id] if e["seq"] >= max(since, rs)]
     # 限量返回：一次最多 300 条（防止大会话事件全量传输拖慢线程/网络），前端持续轮询补齐
     evs = evs[:300]
-    done = bool(sessions[session_id].get("last_result")) or any(e["type"] == "error" for e in events[session_id])
+    # done 只认本轮（round_start 之后）的 done/error，避免历史结果导致轮询提前停止
+    done = any(e["type"] in ("done", "error") and e["seq"] >= rs for e in events[session_id])
     return {"events": evs, "done": done, "next_since": evs[-1]["seq"] + 1 if evs else since}

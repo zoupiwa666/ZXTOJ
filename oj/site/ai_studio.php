@@ -236,7 +236,7 @@ async function sendMsg(){
       }
       return;
     }
-    since = 0;  // 重新从当前事件流起点拉取（message 后 datamaker 会追加新事件）
+    // 保持 since 增量轮询（datamaker 本轮事件从 round_start 继续追加，done 只按本轮判定）
     poll();
   }catch(e){ addMsg('❌ 发送失败', 'err'); generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false; }
 }
