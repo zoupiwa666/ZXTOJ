@@ -16,7 +16,7 @@ app = FastAPI(title="zxt-datamaker", version="2.0.0")
 
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 DATA_ROOT = os.environ.get("DATA_ROOT", "/data/problems")
-GEN_TIMEOUT = 20
+GEN_TIMEOUT = 60
 STD_TIMEOUT_BASE = 15
 STDS = {"python3": None, "c": "-std=c11", "cpp14": "-std=c++14", "cpp17": "-std=c++17", "cpp20": "-std=c++20"}
 
@@ -99,6 +99,55 @@ def run(cmd, timeout, cwd, stdin_data=None):
     except Exception as e:
         return -2, "", str(e)
 
+def fetch_generation(sid, messages):
+    """DeepSeek 流式生成并解析 JSON；流式失败自动重试（最多 3 次），最后兜底非流式"""
+    s = sessions[sid]
+    last_err = None
+    for attempt in range(3):
+        try:
+            body = json.dumps({"model": "deepseek-chat", "messages": messages,
+                               "temperature": 0.6, "stream": True,
+                               "response_format": {"type": "json_object"}}).encode()
+            req = urllib.request.Request(DEEPSEEK_URL, data=body, headers={
+                "Content-Type": "application/json", "Authorization": "Bearer " + s["api_key"]})
+            content = ""
+            with urllib.request.urlopen(req, timeout=300) as r:
+                for raw in r:
+                    line = raw.decode(errors="replace").strip()
+                    if not line.startswith("data:"):
+                        continue
+                    d = line[5:].strip()
+                    if d == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(d)
+                        delta = ((chunk.get("choices") or [{}])[0].get("delta") or {}).get("content", "")
+                    except Exception:
+                        continue
+                    if delta:
+                        content += delta
+                        push_event(sid, "analysis_delta", delta)
+            push_event(sid, "analysis_end", "")
+            return extract_json(content)
+        except Exception as e:
+            last_err = e
+            push_event(sid, "analysis_delta", f"\n[流式中断，第 {attempt+1} 次重试...]\n")
+            continue
+    # 最后兜底：非流式一次
+    try:
+        body = json.dumps({"model": "deepseek-chat", "messages": messages,
+                           "temperature": 0.6, "stream": False,
+                           "response_format": {"type": "json_object"}}).encode()
+        req = urllib.request.Request(DEEPSEEK_URL, data=body, headers={
+            "Content-Type": "application/json", "Authorization": "Bearer " + s["api_key"]})
+        with urllib.request.urlopen(req, timeout=300) as r:
+            data = json.loads(r.read())
+        content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content", "")
+        push_event(sid, "analysis_end", "")
+        return extract_json(content)
+    except Exception as e2:
+        raise RuntimeError(f"DeepSeek 生成失败（流式 {3} 次 + 非流式 1 次）: {e2} / {last_err}")
+
 def do_generate(sid):
     """（在线程中执行）DeepSeek 流式生成 -> 解析 -> 运行生成器/std -> 写盘 -> done 事件"""
     s = sessions[sid]
@@ -107,30 +156,7 @@ def do_generate(sid):
         prompt, user_std = build_prompt(sid, n)
         messages = [{"role": "system", "content": "你是专业的 OJ 出题助手，严格只输出合法 JSON 对象，不输出任何其他内容。"}] \
                    + s["messages"] + [{"role": "user", "content": prompt}]
-        body = json.dumps({"model": "deepseek-chat", "messages": messages,
-                           "temperature": 0.6, "stream": True,
-                           "response_format": {"type": "json_object"}}).encode()
-        req = urllib.request.Request(DEEPSEEK_URL, data=body, headers={
-            "Content-Type": "application/json", "Authorization": "Bearer " + s["api_key"]})
-        content = ""
-        with urllib.request.urlopen(req, timeout=300) as r:
-            for raw in r:
-                line = raw.decode(errors="replace").strip()
-                if not line.startswith("data:"):
-                    continue
-                d = line[5:].strip()
-                if d == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(d)
-                    delta = ((chunk.get("choices") or [{}])[0].get("delta") or {}).get("content", "")
-                except Exception:
-                    continue
-                if delta:
-                    content += delta
-                    push_event(sid, "analysis_delta", delta)
-        push_event(sid, "analysis_end", "")
-        gen = extract_json(content)
+        gen = fetch_generation(sid, messages)
         analysis = (gen.get("analysis") or "").strip()
         if analysis:
             push_event(sid, "analysis_text", analysis)
@@ -143,7 +169,7 @@ def do_generate(sid):
         ck_code = (gen.get("checker_code") or "").strip() if s["need_checker"] else ""
         cfg_yaml = (gen.get("config_yaml") or "").strip()
         s["gen_code"], s["sol_code"], s["ck_code"], s["config_yaml"] = gen_code, sol_code, ck_code, cfg_yaml
-        push_event(sid, "code", {"gen_code": gen_code, "sol_code": sol_code if not user_std else "[用户std]",
+        push_event(sid, "code", {"gen_code": gen_code, "sol_code": sol_code,
                                  "checker": ck_code, "config_yaml": cfg_yaml, "user_std": user_std})
         # 运行
         work = f"/tmp/dm_{uuid.uuid4().hex[:8]}"
@@ -170,18 +196,26 @@ def do_generate(sid):
             errors, ok_n = [], 0
             for i in range(1, n + 1):
                 push_event(sid, "progress", {"i": i, "n": n, "msg": f"正在生成第 {i}/{n} 组数据..."})
-                rc, o, e = run(["python3", f"{work}/gen.py"], GEN_TIMEOUT, work)
-                if rc != 0:
-                    errors.append(f"第{i}组: 生成器失败")
-                    continue
-                open(os.path.join(out_dir, f"{i}.in"), "w", encoding="utf-8").write(o)
-                rc, o, e = run(std_cmd, int(s["time_limit"]) + STD_TIMEOUT_BASE, work, stdin_data=o)
-                if rc != 0:
-                    errors.append(f"第{i}组: std 运行失败")
-                    continue
-                open(os.path.join(out_dir, f"{i}.out"), "w", encoding="utf-8").write(o)
-                open(os.path.join(out_dir, f"{i}.score"), "w").write(str(score_each))
-                ok_n += 1
+                ok = False
+                for attempt in (1, 2):   # 随机失败自动重试一次
+                    rc, o, e = run(["python3", f"{work}/gen.py"], GEN_TIMEOUT, work)
+                    if rc == 0:
+                        rc2, o2, e2 = run(std_cmd, int(s["time_limit"]) + STD_TIMEOUT_BASE, work, stdin_data=o)
+                        if rc2 == 0:
+                            open(os.path.join(out_dir, f"{i}.in"), "w", encoding="utf-8").write(o)
+                            open(os.path.join(out_dir, f"{i}.out"), "w", encoding="utf-8").write(o2)
+                            open(os.path.join(out_dir, f"{i}.score"), "w").write(str(score_each))
+                            ok_n += 1
+                            ok = True
+                            break
+                        else:
+                            e = f"std: {e2.strip()[:500]}"
+                    else:
+                        e = f"gen: {e.strip()[:500]}"
+                    if attempt == 1:
+                        push_event(sid, "progress", {"i": i, "n": n, "msg": f"第 {i} 组失败，重试一次..."})
+                if not ok:
+                    errors.append(f"第{i}组: {e}")
             if ok_n == 0:
                 raise RuntimeError("全部生成失败：" + "; ".join(errors[:5]))
             cfg_name = re.sub(r"[\r\n:]+", " ", s["title"] or s["pid"])
