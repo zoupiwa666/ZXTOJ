@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('super_admin','admin','user') DEFAULT 'user',
     avatar VARCHAR(255) DEFAULT '',
     motto VARCHAR(200) DEFAULT '',
+    tag VARCHAR(5) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS problems (
     hints TEXT,
     time_limit DECIMAL(5,2) DEFAULT 2.0,
     memory_limit INT DEFAULT 128,
+    solution_open TINYINT(1) DEFAULT 1,
     created_by VARCHAR(50) DEFAULT '',
     visibility ENUM('public','hidden') DEFAULT 'public',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -167,6 +169,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     sender_id INT NOT NULL,
     receiver_id INT NOT NULL,
     content TEXT NOT NULL,
+    is_read TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     KEY idx_pair (sender_id, receiver_id),
     KEY idx_recv (receiver_id)
@@ -180,6 +183,9 @@ CREATE TABLE IF NOT EXISTS articles (
     author VARCHAR(50) NOT NULL,
     is_announcement TINYINT(1) DEFAULT 0,
     is_public TINYINT(1) DEFAULT 0,
+    is_solution TINYINT(1) DEFAULT 0,
+    solution_problem VARCHAR(20) DEFAULT NULL,
+    solution_status VARCHAR(10) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_visible (is_announcement, is_public)
@@ -193,4 +199,37 @@ CREATE TABLE IF NOT EXISTS article_permissions (
     can_edit TINYINT(1) DEFAULT 0,
     updated_by VARCHAR(50),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- 文章评论
+CREATE TABLE IF NOT EXISTS article_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_article (article_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 文章点赞
+CREATE TABLE IF NOT EXISTS article_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    value TINYINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_vote (article_id, username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 我的文件
+CREATE TABLE IF NOT EXISTS user_files (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    filename VARCHAR(200) NOT NULL,
+    stored_name VARCHAR(255) NOT NULL,
+    size BIGINT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    share_token VARCHAR(32) DEFAULT NULL,
+    KEY idx_user (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
