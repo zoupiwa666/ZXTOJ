@@ -3,6 +3,7 @@ require __DIR__.'/inc/config.php';
 require __DIR__.'/inc/auth.php';
 requireRole('admin');
 $pid = preg_replace('/[^a-zA-Z0-9_-]/', '', $_GET['pid'] ?? '');
+$sid = preg_replace('/[^a-f0-9]/', '', $_GET['sid'] ?? '');  // /chat/pid/sid 会话恢复
 $prob = null;
 if ($pid !== '') {
     $s = $pdo->prepare("SELECT * FROM problems WHERE problem_id=?"); $s->execute([$pid]);
@@ -93,7 +94,8 @@ progress{flex:1;height:4px;accent-color:#5af;border:none;background:#222}
 
 <script>
 const pid = <?=json_encode($pid)?>;
-let sessionId = null, since = 0, pollTimer = null, generating = false;
+const urlSid = <?=json_encode($sid)?>;
+let sessionId = urlSid || null, since = 0, pollTimer = null, generating = false;
 
 function addMsg(html, cls){ const d=document.createElement('div'); d.className='msg '+cls; d.innerHTML=html; document.getElementById('chatBox').appendChild(d); chatBox.scrollTop=chatBox.scrollHeight; return d; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -183,6 +185,8 @@ async function startSession(){
     if(!d.ok){ document.getElementById('cfgMsg').textContent = d.message; btn.disabled=false; return; }
     sessionId = d.session_id; since = 0; generating = true;
     document.getElementById('cfgBox').style.display = 'none';
+    // 会话独立 URL：/chat/题目编号/sessionid（可刷新恢复/分享）
+    history.replaceState(null, '', '/chat/' + encodeURIComponent(document.getElementById('cPid').value.trim() || pid) + '/' + sessionId);
     document.getElementById('userMsg').disabled = false;
     document.getElementById('btnSend').disabled = false;
     document.getElementById('cfgMsg').textContent = '';
@@ -221,5 +225,13 @@ async function applyData(){
 }
 
 document.getElementById('userMsg').addEventListener('keydown', e => { if(e.key==='Enter') sendMsg(); });
+// 通过 /chat/pid/sid 进入：恢复会话
+if(urlSid){
+  document.getElementById('cfgBox').style.display = 'none';
+  document.getElementById('userMsg').disabled = false;
+  document.getElementById('btnSend').disabled = false;
+  poll();
+  addMsg('🔗 已恢复会话 ' + urlSid.slice(0,8) + '...，可继续对话修改', 'sys');
+}
 </script>
 <?php require __DIR__.'/inc/footer.php'; ?>
