@@ -271,6 +271,8 @@ def chat_start(req: ChatStartReq):
     sid = uuid.uuid4().hex
     sessions[sid] = session_info(req, pid)
     push_event(sid, "info", f"会话已创建：题目 {pid}，组数 {req.count}，std={req.std_lang if req.std_code.strip() else 'AI生成'}，checker={'开' if req.need_checker else '关'}")
+    # 开始会话即自动生成第一轮（用户可在输入框继续多轮修改）
+    threading.Thread(target=do_generate, args=(sid,), daemon=True).start()
     return {"ok": True, "session_id": sid}
 
 @app.post("/chat/message")
