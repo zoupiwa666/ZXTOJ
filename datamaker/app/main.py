@@ -94,6 +94,7 @@ def session_info(req, pid):
         "output_format": req.output_format, "hints": req.hints,
         "time_limit": req.time_limit, "memory_limit": req.memory_limit,
         "messages": [],          # DeepSeek 多轮上下文
+        "last_user_req": "",       # 本轮最新修改要求（注入 prompt 尾部，确保被响应）
         "gen_code": "", "sol_code": "", "ck_code": "", "config_yaml": "",
         "last_result": None,
     }
@@ -129,6 +130,10 @@ def build_prompt(sid, n):
     extra_note = ""
     if s["extra_req"].strip():
         extra_note = f"\n用户对数据的额外要求（务必逐条满足）：{s['extra_req'].strip()}\n"
+    if s.get("last_user_req", "").strip():
+        extra_note += f"\n【用户本轮修改要求——必须据此修改，不得忽略】{s['last_user_req'].strip()}\n"
+    if s.get("gen_code"):
+        extra_note += "\n当前数据生成器代码（请在它的基础上按上述要求修改，不要推翻重写）：\n" + s["gen_code"][:1000] + "\n"
     prompt = ("你是 OJ 出题助手。根据以下题目信息生成测试数据构造代码。\n\n" + desc + "\n"
               + std_note + "\n" + extra_note
               + "请严格只返回一个 JSON 对象（禁止 markdown 代码块、禁止任何解释文字、禁止多余字段），格式：\n{"
@@ -391,16 +396,11 @@ async def chat_message(req: ChatMsgReq):
     if not msg:
         raise HTTPException(400, "消息不能为空")
     sessions[sid]["messages"].append({"role": "user", "content": msg})
+    sessions[sid]["last_user_req"] = msg
     push_event(sid, "user", msg)
     # 新一轮生成：记录本轮事件起点、清除上轮结果（events 的 done 只按本轮判定）
     sessions[sid]["round_start"] = _event_seq[sid]
     sessions[sid]["last_result"] = None
-    # 用户提出修改时，把最新代码作为上下文提示（帮助 AI 基于现有代码修改）
-    if sessions[sid]["gen_code"]:
-        sessions[sid]["messages"].append({
-            "role": "user",
-            "content": "（当前数据生成器如下，请在它基础上按我的要求修改：\n" + sessions[sid]["gen_code"][:800] + "\n）"
-        })
     threading.Thread(target=do_generate, args=(sid,), daemon=True).start()
     return {"ok": True, "session_id": sid}
 
