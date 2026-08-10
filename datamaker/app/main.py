@@ -107,7 +107,7 @@ def build_prompt(sid, n):
             f"题面: {s['description']}\n输入格式: {s['input_format']}\n"
             f"输出格式: {s['output_format']}\n提示: {s['hints']}\n")
     fields = ('"analysis":"（轻度思考）先用 3-5 句简要分析：题目的关键约束、数据分布策略（边界/随机/大数据/特殊构造）、'
-              f'如何保证 {n} 组数据有区分度。只写要点，不要废话。"'
+              f'如何保证 {n} 组数据有区分度。只写要点，用纯文本不要 markdown 标记（不要 **、#、列表符号），不要废话。"'
               ',"gen_code":"Python3 数据生成器代码。每次运行向 stdout 输出一组随机、合法的输入数据'
               '（覆盖边界与大数据），不要输出任何多余内容。要求每组运行结果具有随机区分度，'
               f'并覆盖 {n} 组数据规模的多样性"')
@@ -140,6 +140,13 @@ def build_prompt(sid, n):
               + fields + "}\n"
               + f"共需生成 {n} 组测试数据。")
     return prompt, user_std
+
+def clean_analysis(t: str) -> str:
+    """清洗 AI 思考/消息输出中的 markdown 标记（增量安全：逐字符删标记字符）"""
+    t = re.sub(r"[*#_`|]", "", t)
+    t = re.sub(r"^\s{0,3}[-+>]\s+", "", t, flags=re.M)
+    t = re.sub(r"^\s*\d+\.\s+", "", t, flags=re.M)
+    return t.strip()
 
 def extract_json(content: str) -> dict:
     content = content.strip()
@@ -188,7 +195,7 @@ def fetch_generation(sid, messages):
                         continue
                     if delta:
                         content += delta
-                        push_event(sid, "analysis_delta", delta)
+                        push_event(sid, "analysis_delta", clean_analysis(delta))
             push_event(sid, "analysis_end", "")
             return extract_json(content)
         except Exception as e:
@@ -210,124 +217,134 @@ def fetch_generation(sid, messages):
     except Exception as e2:
         raise RuntimeError(f"DeepSeek 生成失败（流式 {3} 次 + 非流式 1 次）: {e2} / {last_err}")
 
+MAX_AUTO_FIX = 3   # 生成/编译/自检失败时，自动把错误反馈给 AI 重写
+
 def do_generate(sid):
-    """（在线程中执行）DeepSeek 流式生成 -> 解析 -> 运行生成器/std -> 写盘 -> done 事件"""
+    """（在线程中执行）DeepSeek 生成 -> 运行 -> 自检；失败自动反馈 AI 重写（最多 MAX_AUTO_FIX 轮）"""
     s = sessions[sid]
     n = s["count"]
-    try:
-        prompt, user_std = build_prompt(sid, n)
-        messages = [{"role": "system", "content": "你是专业的 OJ 出题助手，严格只输出合法 JSON 对象，不输出任何其他内容。"}] \
-                   + s["messages"] + [{"role": "user", "content": prompt}]
-        gen = fetch_generation(sid, messages)
-        analysis = (gen.get("analysis") or "").strip()
-        if analysis:
-            push_event(sid, "analysis_text", analysis)
-        gen_code = (gen.get("gen_code") or "").strip()
-        if not gen_code:
-            raise RuntimeError("DeepSeek 未返回 gen_code")
-        sol_code = s["std_code"].strip() if user_std else (gen.get("sol_code") or "").strip()
-        if not sol_code:
-            raise RuntimeError("缺少标准解法代码")
-        ck_code = (gen.get("checker_code") or "").strip() if s["need_checker"] else ""
-        cfg_yaml = (gen.get("config_yaml") or "").strip()
-        s["gen_code"], s["sol_code"], s["ck_code"], s["config_yaml"] = gen_code, sol_code, ck_code, cfg_yaml
-        push_event(sid, "code", {"gen_code": gen_code, "sol_code": sol_code,
-                                 "checker": ck_code, "config_yaml": cfg_yaml, "user_std": user_std})
-        # 运行
-        work = f"/tmp/dm_{uuid.uuid4().hex[:8]}"
-        os.makedirs(work, exist_ok=True)
+    last_err = ""
+    for fix in range(MAX_AUTO_FIX):
+        if fix > 0:
+            push_event(sid, "analysis_delta", clean_analysis(f"\n[检测到问题，已通知 AI 修复（第 {fix}/{MAX_AUTO_FIX-1} 次）...]\n"))
+            s["messages"].append({"role": "user",
+                "content": f"你上次生成的代码有问题，请修复后重新输出完整 JSON：{last_err}"})
         try:
-            open(f"{work}/gen.py", "w", encoding="utf-8").write(gen_code)
-            std_lang = s["std_lang"] if user_std else "python3"
-            if std_flag := STDS.get(std_lang):
-                open(f"{work}/std.cpp", "w", encoding="utf-8").write(sol_code)
-                cc = "gcc" if std_lang == "c" else "g++"
-                rc, o, e = run([cc, std_flag, "-O2", "-o", f"{work}/std", f"{work}/std.cpp", "-lm"], 60, work)
-                if rc != 0:
-                    raise RuntimeError("std 编译失败：\n" + e[-500:])
-                std_cmd = [f"{work}/std"]
-            else:
-                open(f"{work}/std.py", "w", encoding="utf-8").write(sol_code)
-                std_cmd = ["python3", f"{work}/std.py"]
-            out_dir = os.path.join(DATA_ROOT, s["pid"])
-            os.makedirs(out_dir, exist_ok=True)
-            for f in os.listdir(out_dir):
-                if re.fullmatch(r"\d+\.(in|out|score)", f):
-                    os.remove(os.path.join(out_dir, f))
-            score_each = round(100.0 / n, 2)
-            errors, ok_n = [], 0
-            for i in range(1, n + 1):
-                push_event(sid, "progress", {"i": i, "n": n, "msg": f"正在生成第 {i}/{n} 组数据..."})
-                ok = False
-                for attempt in (1, 2):   # 随机失败自动重试一次
-                    rc, o, e = run(["python3", f"{work}/gen.py"], GEN_TIMEOUT, work)
-                    if rc == 0:
-                        rc2, o2, e2 = run(std_cmd, int(s["time_limit"]) + STD_TIMEOUT_BASE, work, stdin_data=o)
-                        if rc2 == 0:
-                            open(os.path.join(out_dir, f"{i}.in"), "w", encoding="utf-8").write(o)
-                            open(os.path.join(out_dir, f"{i}.out"), "w", encoding="utf-8").write(o2)
-                            open(os.path.join(out_dir, f"{i}.score"), "w").write(str(score_each))
-                            ok_n += 1
-                            ok = True
-                            break
+            prompt, user_std = build_prompt(sid, n)
+            messages = [{"role": "system", "content": "你是专业的 OJ 出题助手，严格只输出合法 JSON 对象，不输出任何其他内容。"}] \
+                       + s["messages"] + [{"role": "user", "content": prompt}]
+            gen = fetch_generation(sid, messages)
+            analysis = (gen.get("analysis") or "").strip()
+            if analysis:
+                push_event(sid, "analysis_text", clean_analysis(analysis))
+            gen_code = (gen.get("gen_code") or "").strip()
+            if not gen_code:
+                raise RuntimeError("DeepSeek 未返回 gen_code")
+            sol_code = s["std_code"].strip() if user_std else (gen.get("sol_code") or "").strip()
+            if not sol_code:
+                raise RuntimeError("缺少标准解法代码")
+            ck_code = (gen.get("checker_code") or "").strip() if s["need_checker"] else ""
+            cfg_yaml = (gen.get("config_yaml") or "").strip()
+            s["gen_code"], s["sol_code"], s["ck_code"], s["config_yaml"] = gen_code, sol_code, ck_code, cfg_yaml
+            push_event(sid, "code", {"gen_code": gen_code, "sol_code": sol_code,
+                                     "checker": ck_code, "config_yaml": cfg_yaml, "user_std": user_std})
+            work = f"/tmp/dm_{uuid.uuid4().hex[:8]}"
+            os.makedirs(work, exist_ok=True)
+            try:
+                open(f"{work}/gen.py", "w", encoding="utf-8").write(gen_code)
+                std_lang = s["std_lang"] if user_std else "python3"
+                if std_flag := STDS.get(std_lang):
+                    open(f"{work}/std.cpp", "w", encoding="utf-8").write(sol_code)
+                    cc = "gcc" if std_lang == "c" else "g++"
+                    rc, o, e = run([cc, std_flag, "-O2", "-o", f"{work}/std", f"{work}/std.cpp", "-lm"], 60, work)
+                    if rc != 0:
+                        raise RuntimeError("std 编译失败：\n" + e[-500:])
+                    std_cmd = [f"{work}/std"]
+                else:
+                    open(f"{work}/std.py", "w", encoding="utf-8").write(sol_code)
+                    std_cmd = ["python3", f"{work}/std.py"]
+                out_dir = os.path.join(DATA_ROOT, s["pid"])
+                os.makedirs(out_dir, exist_ok=True)
+                for f in os.listdir(out_dir):
+                    if re.fullmatch(r"\d+\.(in|out|score)", f):
+                        os.remove(os.path.join(out_dir, f))
+                score_each = round(100.0 / n, 2)
+                errors, ok_n = [], 0
+                for i in range(1, n + 1):
+                    push_event(sid, "progress", {"i": i, "n": n, "msg": f"正在生成第 {i}/{n} 组数据..."})
+                    ok = False
+                    for attempt in (1, 2):
+                        rc, o, e = run(["python3", f"{work}/gen.py"], GEN_TIMEOUT, work)
+                        if rc == 0:
+                            rc2, o2, e2 = run(std_cmd, int(s["time_limit"]) + STD_TIMEOUT_BASE, work, stdin_data=o)
+                            if rc2 == 0:
+                                open(os.path.join(out_dir, f"{i}.in"), "w", encoding="utf-8").write(o)
+                                open(os.path.join(out_dir, f"{i}.out"), "w", encoding="utf-8").write(o2)
+                                open(os.path.join(out_dir, f"{i}.score"), "w").write(str(score_each))
+                                ok_n += 1
+                                ok = True
+                                break
+                            else:
+                                e = f"std: {e2.strip()[:400]}"
                         else:
-                            e = f"std: {e2.strip()[:500]}"
-                    else:
-                        e = f"gen: {e.strip()[:500]}"
-                    if attempt == 1:
-                        push_event(sid, "progress", {"i": i, "n": n, "msg": f"第 {i} 组失败，重试一次..."})
-                if not ok:
-                    errors.append(f"第{i}组: {e}")
-            if ok_n == 0:
-                raise RuntimeError("全部生成失败：" + "; ".join(errors[:5]))
-            cfg_name = re.sub(r"[\r\n:]+", " ", s["title"] or s["pid"])
-            m = re.search(r"name\s*:\s*(.+)", cfg_yaml)
-            if m:
-                cfg_name = m.group(1).strip()
-            open(os.path.join(out_dir, "config.yaml"), "w", encoding="utf-8").write(
-                f"name: {cfg_name}\ntime_limit: {s['time_limit']}\nmemory_limit: {s['memory_limit']}\n"
-                f"test_cases: {n}\nscoring_mode: default\n")
-            if ck_code:
-                # 自检：用已生成的标准答案 .out 跑 checker，必须全部通过才落盘（防止 AI 自创约束误杀标准答案）
-                try:
+                            e = f"gen: {e.strip()[:400]}"
+                        if attempt == 1:
+                            push_event(sid, "progress", {"i": i, "n": n, "msg": f"第 {i} 组失败，重试一次..."})
+                    if not ok:
+                        errors.append(f"第{i}组: {e}")
+                if ok_n == 0:
+                    raise RuntimeError("全部生成失败：" + "; ".join(errors[:5]))
+                if ok_n < n:
+                    raise RuntimeError(f"部分失败（{ok_n}/{n}）：" + "; ".join(errors[:3]))
+                if ck_code:
                     ns = {}
                     exec(ck_code, ns)
                     ck_fn = ns.get("check")
                     if not callable(ck_fn):
                         raise RuntimeError("checker 缺少可调用函数 check(input, output, expected)")
-                    for si in range(1, ok_n + 1):
+                    for si in range(1, n + 1):
                         it = open(os.path.join(out_dir, f"{si}.in"), encoding="utf-8", errors="replace").read()
                         ot = open(os.path.join(out_dir, f"{si}.out"), encoding="utf-8", errors="replace").read()
                         r = ck_fn(it, ot, ot)
                         passed = r if isinstance(r, bool) else (bool(r[0]) if isinstance(r, (list, tuple)) else bool(r))
                         if not passed:
-                            raise RuntimeError(f"checker 自检失败：标准答案 .out 第{si}组未通过（checker 逻辑与题意不符，可能自创了题面没有的约束）")
-                except Exception as e:
-                    raise RuntimeError(f"checker 自检失败: {e}")
-                open(os.path.join(out_dir, "checker.py"), "w", encoding="utf-8").write(ck_code)
-            elif os.path.exists(os.path.join(out_dir, "checker.py")):
-                os.remove(os.path.join(out_dir, "checker.py"))
-            msg = f"AI 造数据完成：成功 {ok_n}/{n} 组" + (f"（失败 {len(errors)} 组：{'; '.join(errors[:3])}）" if errors else "")
-            if ck_code:
-                msg += "，已生成 checker"
-            if user_std:
-                msg += f"，使用用户 std({std_lang})"
-            s["last_result"] = {"ok": True, "message": msg, "n": ok_n, "checker": bool(ck_code)}
-            s["messages"].append({"role": "assistant", "content": f"（AI 已生成并运行数据：{msg}，可继续提出修改要求）"})
-            push_event(sid, "done", s["last_result"])
-        finally:
-            shutil.rmtree(work, ignore_errors=True)
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors="replace")
-        try:
-            msg = json.loads(detail)["error"]["message"]
-        except Exception:
-            msg = detail[:200]
-        push_event(sid, "error", f"DeepSeek 调用失败: {msg}")
-    except Exception as e:
-        push_event(sid, "error", str(e))
+                            raise RuntimeError(f"checker 自检失败：标准答案 .out 第{si}组未通过（checker 可能自创了题面没有的约束）")
+                cfg_name = re.sub(r"[\r\n:]+", " ", s["title"] or s["pid"])
+                m = re.search(r"name\s*:\s*(.+)", cfg_yaml)
+                if m:
+                    cfg_name = m.group(1).strip()
+                open(os.path.join(out_dir, "config.yaml"), "w", encoding="utf-8").write(
+                    f"name: {cfg_name}\ntime_limit: {s['time_limit']}\nmemory_limit: {s['memory_limit']}\n"
+                    f"test_cases: {n}\nscoring_mode: default\n")
+                if ck_code:
+                    open(os.path.join(out_dir, "checker.py"), "w", encoding="utf-8").write(ck_code)
+                elif os.path.exists(os.path.join(out_dir, "checker.py")):
+                    os.remove(os.path.join(out_dir, "checker.py"))
+                msg = f"AI 造数据完成：成功 {ok_n}/{n} 组"
+                if ck_code:
+                    msg += "，已生成 checker"
+                if user_std:
+                    msg += f"，使用用户 std({std_lang})"
+                if fix > 0:
+                    msg += f"（自动修复 {fix} 次后成功）"
+                s["last_result"] = {"ok": True, "message": msg, "n": ok_n, "checker": bool(ck_code)}
+                s["messages"].append({"role": "assistant", "content": f"（AI 已生成并运行数据：{msg}，可继续提出修改要求）"})
+                push_event(sid, "done", s["last_result"])
+                return
+            finally:
+                shutil.rmtree(work, ignore_errors=True)
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")
+            try:
+                msg = json.loads(detail)["error"]["message"]
+            except Exception:
+                msg = detail[:200]
+            last_err = f"DeepSeek 调用失败: {msg}"
+        except Exception as e:
+            last_err = str(e)
+        push_event(sid, "analysis_delta", clean_analysis(f"\n[❌ {last_err[:200]}]\n"))
+    push_event(sid, "error", f"自动修复 {MAX_AUTO_FIX} 次后仍失败：{last_err}")
 
-# ---------- 兼容旧接口 ----------
 class GenRequest(BaseModel):
     problem_id: str
     api_key: str
