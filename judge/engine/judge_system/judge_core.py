@@ -171,7 +171,8 @@ def process_one_case(args_tuple):
     rr = run_case_sync(lang, workdir, shared_dir, inp, ct, cm)
     verdict=rr["verdict"]; output=rr.get("output",""); err_msg=rr.get("error")
 
-    if verdict==V_AC and len(output.encode())>ol:
+    # OLE 前置判定：仅无 checker 时生效；有 checker（special judge）时输出合法性交给 checker 判断
+    if verdict==V_AC and ck is None and len(output.encode())>ol:
         verdict=V_OLE; err_msg=f"输出超限:{len(output.encode())}B > {ol}B"
 
     passed=False; score=0.0
@@ -249,7 +250,10 @@ def main():
                 i += 1
         else:
             cases=json.loads((Path(args.workdir)/"test_cases.json").read_text())
-        cp=Path(args.workdir)/"checker.py"; ck=cp.read_text() if cp.exists() else None
+        cp=Path(args.workdir)/"checker.py"
+        if not cp.exists() and data_dir and os.path.isdir(data_dir):
+            cp=Path(data_dir)/"checker.py"   # data_dir 模式下 checker 在题目数据目录
+        ck=cp.read_text(encoding="utf-8", errors="replace") if cp.exists() else None
 
         if lang in ("c","cpp14","cpp17","cpp20"):
             emit_status("compiling", "编译中...")
