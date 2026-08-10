@@ -50,7 +50,7 @@ class TaskScheduler:
             data_dir = td.get('data_dir') or self._data_dirs.pop(task_id, ''); print(f'[DEBUG] task={task_id[:8]} data_dir={data_dir}')
             cases = [{"input": tc.input if hasattr(tc,'input') else tc.get('input',''), 
                       "expected_output": tc.expected_output if hasattr(tc,'expected_output') else tc.get('expected_output',''),
-                      "time_limit": tc.time_limit if hasattr(tc,'time_limit') else tc.get('time_limit', DEFAULT_TIME_LIMIT),
+                      "time_limit": (tc.time_limit or DEFAULT_TIME_LIMIT) if hasattr(tc,'time_limit') else tc.get('time_limit', DEFAULT_TIME_LIMIT),
                       "memory_limit": (tc.memory_limit or DEFAULT_MEMORY_LIMIT) if hasattr(tc,'memory_limit') else (tc.get('memory_limit') or DEFAULT_MEMORY_LIMIT),
                       "score": tc.score if hasattr(tc,'score') and tc.score else tc.get('score', 1.0)}
                      for tc in raw_cases]
