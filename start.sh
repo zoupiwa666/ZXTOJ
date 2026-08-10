@@ -299,20 +299,15 @@ for i in $(seq 1 60); do
   sleep 2
 done
 [ "$DB_READY" = "1" ] && ok "数据库就绪" || err "数据库启动超时，请检查: docker logs zxt-db"
-# 首次初始化：建库 + 导入表结构（已有数据则跳过）
-if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "USE judge_problems" >/dev/null 2>&1; then
-  info "初始化数据库（建库+导入表结构）..."
-  docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "CREATE DATABASE IF NOT EXISTS judge_problems CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" 2>/dev/null || true
-  docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null || true
-  ok "数据库初始化完成"
-else
-  # 迁移兼容：缺基础表（users）说明 init.sql 未成功导入，自动补齐
-  if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" judge_problems -e "SHOW TABLES LIKE 'users'" 2>/dev/null | grep -q users; then
-    info "检测到数据库缺少基础表，自动导入 init.sql 补齐..."
-    docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null || true
-    ok "数据库表结构已补齐"
-  fi
-fi
+# 幂等建库/建表：缺什么补什么（CREATE TABLE IF NOT EXISTS / information_schema 判断，无副作用）
+# 每次运行都执行（无论是否 --rebuild / --reset），缺表建表、缺列补列
+info "同步数据库结构（缺表自动补建、缺列自动补齐）..."
+docker exec zxt-db mariadb "${DB_AUTH[@]}" -e "CREATE DATABASE IF NOT EXISTS judge_problems CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" 2>/dev/null || true
+# 1) 表结构：init.sql 补全缺失的表
+docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/init.sql 2>/dev/null || true
+# 2) 增量列：migrate_add_columns.sql 幂等补列（信息缺失时自动 ALTER）
+docker exec -i zxt-db mariadb --force "${DB_AUTH[@]}" judge_problems < oj/migrate_add_columns.sql 2>/dev/null || true
+ok "数据库结构已同步"
 
 # 确保默认管理员 admin/admin123 存在（任何部署都不允许缺失）
 if ! docker exec zxt-db mariadb "${DB_AUTH[@]}" judge_problems -N -e "SELECT COUNT(*) FROM users WHERE username='admin'" 2>/dev/null | grep -qE '^[1-9]'; then
