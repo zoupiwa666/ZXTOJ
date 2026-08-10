@@ -3,6 +3,7 @@
 require __DIR__.'/../inc/config.php';
 require __DIR__.'/../inc/auth.php';
 requireRole('admin');
+session_write_close();   // 释放 session 锁，避免高频轮询与其它请求串行排队
 header('Content-Type: application/json; charset=utf-8');
 
 $pid = preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['problem_id'] ?? '');

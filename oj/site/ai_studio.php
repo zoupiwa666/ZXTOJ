@@ -173,7 +173,7 @@ function poll(){
       if(d.events){ for(const ev of d.events){ since = Math.max(since, ev.seq+1); renderEvent(ev); } }
       if(d.done && pollTimer){ clearInterval(pollTimer); pollTimer=null; }
     }catch(e){}
-  }, 1000);
+  }, 1500);
 }
 
 async function startSession(){
@@ -190,7 +190,10 @@ async function startSession(){
   fd.append('std_lang', document.getElementById('cLang').value);
   fd.append('save_key', document.getElementById('cSaveKey').checked ? '1':'0');
   try{
-    const r = await fetch('/api/ai_studio_start.php', {method:'POST', body:fd});
+    const ac = new AbortController();
+    const tm = setTimeout(()=>ac.abort(), 8000);
+    const r = await fetch('/api/ai_studio_start.php', {method:'POST', body:fd, signal:ac.signal});
+    clearTimeout(tm);
     const d = await r.json();
     if(!d.ok){ document.getElementById('cfgMsg').textContent = d.message; btn.disabled=false; return; }
     sessionId = d.session_id; since = 0; generating = true;
@@ -201,7 +204,7 @@ async function startSession(){
     document.getElementById('btnSend').disabled = false;
     document.getElementById('cfgMsg').textContent = '';
     poll();
-  }catch(e){ document.getElementById('cfgMsg').textContent = '启动失败'; btn.disabled=false; }
+  }catch(e){ document.getElementById('cfgMsg').textContent = (e.name==='AbortError' ? '请求超时，请重试' : '启动失败'); btn.disabled=false; }
 }
 
 async function sendMsg(){
