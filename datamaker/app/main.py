@@ -20,10 +20,48 @@ GEN_TIMEOUT = 60
 STD_TIMEOUT_BASE = 15
 STDS = {"python3": None, "c": "-std=c11", "cpp14": "-std=c++14", "cpp17": "-std=c++17", "cpp20": "-std=c++20"}
 
-# ---------- 会话与事件 ----------
+# ---------- 会话与事件（持久化到 /data/ai_sessions，容器重启不丢）----------
+SESSION_DIR = os.environ.get("SESSION_DIR", "/data/ai_sessions")
+os.makedirs(SESSION_DIR, exist_ok=True)
+
 sessions = {}
 events = defaultdict(deque)     # session_id -> deque of {"seq":int,"type":str,"data":obj}
 _event_seq = defaultdict(int)
+
+def _persist(sid):
+    try:
+        with open(os.path.join(SESSION_DIR, sid + ".json"), "w", encoding="utf-8") as f:
+            json.dump({"session": sessions[sid], "events": list(events[sid]),
+                       "next_seq": _event_seq[sid]}, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+def _load_sessions():
+    try:
+        for fn in os.listdir(SESSION_DIR):
+            if not fn.endswith(".json"):
+                continue
+            sid = fn[:-5]
+            try:
+                with open(os.path.join(SESSION_DIR, fn), "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                sessions[sid] = data["session"]
+                events[sid] = deque(data.get("events", []))
+                _event_seq[sid] = max(data.get("next_seq", len(events[sid])), len(events[sid]))
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+def _persist_loop():
+    while True:
+        time.sleep(3)
+        for sid in list(sessions):
+            _persist(sid)
+
+_load_sessions()
+threading.Thread(target=_persist_loop, daemon=True).start()
+threading.Thread(target=lambda: (time.sleep(3600), cleanup_old_sessions()), daemon=True).start()
 
 def push_event(sid, typ, data):
     seq = _event_seq[sid]
@@ -31,8 +69,24 @@ def push_event(sid, typ, data):
     events[sid].append({"seq": seq, "type": typ, "data": data})
     return seq
 
+def cleanup_old_sessions(max_age=86400):
+    """清理超过 max_age 秒的会话文件"""
+    now = time.time()
+    for sid in list(sessions):
+        try:
+            if now - sessions[sid].get("created", 0) > max_age:
+                sessions.pop(sid, None)
+                events.pop(sid, None)
+                _event_seq.pop(sid, None)
+                for ext in (".json",):
+                    try: os.remove(os.path.join(SESSION_DIR, sid + ext))
+                    except Exception: pass
+        except Exception:
+            pass
+
 def session_info(req, pid):
     return {
+        "created": time.time(),
         "pid": pid, "api_key": req.api_key, "count": req.count,
         "need_checker": req.need_checker, "checker_req": req.checker_req,
         "extra_req": req.extra_req, "std_code": req.std_code, "std_lang": req.std_lang,

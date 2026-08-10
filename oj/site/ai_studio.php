@@ -160,6 +160,16 @@ function poll(){
     try{
       const r = await fetch('api/ai_studio_events.php?session_id='+sessionId+'&since='+since);
       const d = await r.json();
+      if(d.ok === false){
+        // 会话不存在/失效：停止轮询，提示并允许重新开始
+        if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
+        addMsg('⚠️ ' + (d.message || '会话已失效，请重新开始'), 'err');
+        document.getElementById('cfgBox').style.display = '';
+        document.getElementById('userMsg').disabled = true;
+        document.getElementById('btnSend').disabled = true;
+        document.getElementById('btnStart').disabled = false;
+        return;
+      }
       if(d.events){ for(const ev of d.events){ since = Math.max(since, ev.seq+1); renderEvent(ev); } }
       if(d.done && pollTimer){ clearInterval(pollTimer); pollTimer=null; }
     }catch(e){}
@@ -208,7 +218,15 @@ async function sendMsg(){
   try{
     const r = await fetch('api/ai_studio_message.php', {method:'POST', body:fd});
     const d = await r.json();
-    if(!d.ok){ addMsg('❌ ' + (d.message||'发送失败'), 'err'); generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false; return; }
+    if(!d.ok){
+      addMsg('❌ ' + (d.message||'发送失败'), 'err');
+      generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false;
+      if(d.message && d.message.indexOf('过期') !== -1){
+        document.getElementById('cfgBox').style.display = '';
+        document.getElementById('btnStart').disabled = false;
+      }
+      return;
+    }
     since = 0;  // 重新从当前事件流起点拉取（message 后 datamaker 会追加新事件）
     poll();
   }catch(e){ addMsg('❌ 发送失败', 'err'); generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false; }
