@@ -209,7 +209,7 @@ async function startSession(){
   fd.append('save_key', document.getElementById('cSaveKey').checked ? '1':'0');
   try{
     const ac = new AbortController();
-    const tm = setTimeout(()=>ac.abort(), 8000);
+    const tm = setTimeout(()=>ac.abort(), 25000);
     const r = await fetch('/api/ai_studio_start.php', {method:'POST', body:fd, signal:ac.signal});
     clearTimeout(tm);
     const d = await r.json();

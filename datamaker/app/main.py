@@ -31,7 +31,8 @@ _event_seq = defaultdict(int)
 def _persist(sid):
     try:
         with open(os.path.join(SESSION_DIR, sid + ".json"), "w", encoding="utf-8") as f:
-            json.dump({"session": sessions[sid], "events": list(events[sid]),
+            evs = list(events[sid])[-5000:]   # 只持久化最近 5000 条，防大文件拖慢写盘
+            json.dump({"session": sessions[sid], "events": evs,
                        "next_seq": _event_seq[sid]}, f, ensure_ascii=False)
     except Exception:
         pass
@@ -61,7 +62,11 @@ def _persist_loop():
 
 _load_sessions()
 threading.Thread(target=_persist_loop, daemon=True).start()
-threading.Thread(target=lambda: (time.sleep(3600), cleanup_old_sessions()), daemon=True).start()
+def _cleanup_loop():
+    while True:
+        time.sleep(1800)
+        cleanup_old_sessions()
+threading.Thread(target=_cleanup_loop, daemon=True).start()
 
 def push_event(sid, typ, data):
     seq = _event_seq[sid]
