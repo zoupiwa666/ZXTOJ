@@ -207,26 +207,36 @@ async function startSession(){
   fd.append('std_code', stdVal);
   fd.append('std_lang', document.getElementById('cLang').value);
   fd.append('save_key', document.getElementById('cSaveKey').checked ? '1':'0');
-  try{
-    const ac = new AbortController();
-    const tm = setTimeout(()=>ac.abort(), 25000);
-    const r = await fetch('/api/ai_studio_start.php', {method:'POST', body:fd, signal:ac.signal});
-    clearTimeout(tm);
-    const d = await r.json();
-    if(!d.ok){ document.getElementById('cfgMsg').textContent = d.message; btn.disabled=false; return; }
-    sessionId = d.session_id; since = 0; generating = true;
-    curCfg = {count: document.getElementById('cCount').value, need_checker: document.getElementById('cCk').checked,
-              checker_req: document.getElementById('cCkReq').value, extra_req: document.getElementById('cExtra').value,
-              std_code: document.getElementById('cStd').value, std_lang: document.getElementById('cLang').value};
-    document.getElementById('cfgBox').style.display = 'none';
-    document.getElementById('btnParams').style.display = '';
-    // 会话独立 URL：/chat/题目编号/sessionid（可刷新恢复/分享）
-    history.replaceState(null, '', '/chat/' + encodeURIComponent(document.getElementById('cPid').value.trim() || pid) + '/' + sessionId);
-    document.getElementById('userMsg').disabled = false;
-    document.getElementById('btnSend').disabled = false;
-    document.getElementById('cfgMsg').textContent = '';
-    poll();
-  }catch(e){ document.getElementById('cfgMsg').textContent = (e.name==='AbortError' ? '请求超时，请重试' : '启动失败'); btn.disabled=false; }
+  for(let attempt=1; attempt<=3; attempt++){
+    try{
+      const ac = new AbortController();
+      const tm = setTimeout(()=>ac.abort(), 25000);
+      const r = await fetch('/api/ai_studio_start.php', {method:'POST', body:fd, signal:ac.signal});
+      clearTimeout(tm);
+      const d = await r.json();
+      if(!d.ok){ document.getElementById('cfgMsg').textContent = d.message; btn.disabled=false; return; }
+      sessionId = d.session_id; since = 0; generating = true;
+      curCfg = {count: document.getElementById('cCount').value, need_checker: document.getElementById('cCk').checked,
+                checker_req: document.getElementById('cCkReq').value, extra_req: document.getElementById('cExtra').value,
+                std_code: document.getElementById('cStd').value, std_lang: document.getElementById('cLang').value};
+      document.getElementById('cfgBox').style.display = 'none';
+      document.getElementById('btnParams').style.display = '';
+      history.replaceState(null, '', '/chat/' + encodeURIComponent(document.getElementById('cPid').value.trim() || pid) + '/' + sessionId);
+      document.getElementById('userMsg').disabled = false;
+      document.getElementById('btnSend').disabled = false;
+      document.getElementById('cfgMsg').textContent = '';
+      poll();
+      return;
+    }catch(e){
+      if(attempt < 3){
+        document.getElementById('cfgMsg').textContent = '网络请求失败，自动重试 ('+attempt+'/3)...';
+        await new Promise(res=>setTimeout(res, 1500));
+        continue;
+      }
+      document.getElementById('cfgMsg').textContent = (e.name==='AbortError' ? '请求超时，已自动重试 3 次仍失败，请稍后再试' : '启动失败');
+      btn.disabled=false;
+    }
+  }
 }
 
 async function sendMsg(){
