@@ -217,6 +217,147 @@ def fetch_generation(sid, messages):
     except Exception as e2:
         raise RuntimeError(f"DeepSeek 生成失败（流式 {3} 次 + 非流式 1 次）: {e2} / {last_err}")
 
+# ---------- AI 工具（function calling）：文件读写限于会话工作目录，运行仅限专用工具 ----------
+def session_ws(sid):
+    ws = f"/tmp/dm_ws/{sid}"
+    os.makedirs(ws, exist_ok=True)
+    return ws
+
+def exec_tool(sid, name, args):
+    """执行 AI 请求的工具；文件操作限制在会话工作目录内，绝不执行任意代码"""
+    ws = session_ws(sid)
+    try:
+        if name == "write_file":
+            p = os.path.realpath(os.path.join(ws, str(args.get("path", ""))))
+            if p != ws and not p.startswith(ws + os.sep):
+                return "错误：路径越界，只能写工作目录内文件"
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(str(args.get("content", "")))
+            return f"已写入 {args.get('path')}（{len(str(args.get('content','')))} 字符）"
+        if name == "read_file":
+            p = os.path.realpath(os.path.join(ws, str(args.get("path", ""))))
+            if p != ws and not p.startswith(ws + os.sep):
+                return "错误：路径越界"
+            if not os.path.exists(p):
+                return "文件不存在"
+            with open(p, encoding="utf-8", errors="replace") as f:
+                return f.read()[:4000]
+        if name == "list_files":
+            fs = sorted(os.listdir(ws))
+            return "\n".join(fs) if fs else "（空目录）"
+        if name == "run_generator":
+            # 运行工作目录 gen.py 生成 count 组数据（用 sol.py 或编译 sol.cpp 产出 .out）
+            count = max(1, min(int(args.get("count", sessions[sid]["count"])), 50))
+            if not os.path.exists(os.path.join(ws, "gen.py")):
+                return "错误：工作目录没有 gen.py（先用 write_file 写入）"
+            has_sol = os.path.exists(os.path.join(ws, "sol.py")) or os.path.exists(os.path.join(ws, "sol.cpp"))
+            if not has_sol:
+                return "错误：没有 sol.py/sol.cpp（先用 write_file 写入标准解法）"
+            std_cmd = None
+            if os.path.exists(os.path.join(ws, "sol.cpp")):
+                rc, o, e = run(["g++", "-std=c++17", "-O2", "-o", os.path.join(ws, "sol"), os.path.join(ws, "sol.cpp"), "-lm"], 60, ws)
+                if rc != 0:
+                    return "sol.cpp 编译失败：\n" + e[-300:]
+                std_cmd = [os.path.join(ws, "sol")]
+            else:
+                std_cmd = ["python3", os.path.join(ws, "sol.py")]
+            ok = 0
+            msgs = []
+            for i in range(1, count + 1):
+                rc, o, e = run(["python3", os.path.join(ws, "gen.py")], GEN_TIMEOUT, ws)
+                if rc != 0:
+                    msgs.append(f"第{i}组 gen 失败: {e.strip()[:100]}")
+                    continue
+                open(os.path.join(ws, f"{i}.in"), "w", encoding="utf-8").write(o)
+                rc, o2, e2 = run(std_cmd, int(sessions[sid]["time_limit"]) + STD_TIMEOUT_BASE, ws, stdin_data=o)
+                if rc != 0:
+                    msgs.append(f"第{i}组 sol 失败: {e2.strip()[:100]}")
+                    continue
+                open(os.path.join(ws, f"{i}.out"), "w", encoding="utf-8").write(o2)
+                open(os.path.join(ws, f"{i}.score"), "w").write(str(round(100.0 / count, 2)))
+                ok += 1
+            return f"生成完成：{ok}/{count} 组" + (("；" + "; ".join(msgs[:3])) if msgs else "")
+        if name == "test_checker":
+            # 用工作目录数据（N.in/N.out）跑 checker.py 自检（标准答案必须通过）
+            if not os.path.exists(os.path.join(ws, "checker.py")):
+                return "错误：没有 checker.py（先用 write_file 写入）"
+            ns = {}
+            exec(open(os.path.join(ws, "checker.py"), encoding="utf-8").read(), ns)
+            ck = ns.get("check")
+            if not callable(ck):
+                return "错误：checker 缺少 check(input, output, expected) 函数"
+            files = sorted(f for f in os.listdir(ws) if re.fullmatch(r"\d+\.in", f))
+            if not files:
+                return "错误：没有数据（先 run_generator）"
+            fails = []
+            for f in files:
+                idx = int(f[:-3])
+                it = open(os.path.join(ws, f), encoding="utf-8", errors="replace").read()
+                ot = open(os.path.join(ws, f"{idx}.out"), encoding="utf-8", errors="replace").read()
+                try:
+                    r = ck(it, ot, ot)
+                    passed = r if isinstance(r, bool) else (bool(r[0]) if isinstance(r, (list, tuple)) else bool(r))
+                except Exception as e:
+                    passed = False
+                    it = f"异常: {e}"
+                if not passed:
+                    fails.append(f"第{idx}组")
+            if fails:
+                return f"checker 自检失败（标准答案未通过）：{', '.join(fails)}（checker 可能自创了题面没有的约束）"
+            return f"checker 自检通过：{len(files)} 组标准答案全部通过"
+        return f"未知工具: {name}"
+    except Exception as e:
+        return f"工具执行异常: {e}"
+
+TOOLS = [
+    {"type": "function", "function": {"name": "write_file",
+        "description": "在工作目录写文件（编写/修改 gen.py、sol.py、sol.cpp、checker.py 等）。路径必须是相对文件名。",
+        "parameters": {"type": "object", "properties": {"path": {"type": "string", "description": "相对文件名，如 gen.py"}, "content": {"type": "string"}}, "required": ["path", "content"]}}},
+    {"type": "function", "function": {"name": "read_file",
+        "description": "读取工作目录文件内容（限 4000 字符）。",
+        "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}},
+    {"type": "function", "function": {"name": "list_files",
+        "description": "列出工作目录所有文件。",
+        "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {"name": "run_generator",
+        "description": "运行工作目录 gen.py 生成 count 组数据（用 sol.py 或 sol.cpp 产出 .out）。这是唯一能执行代码的方式。",
+        "parameters": {"type": "object", "properties": {"count": {"type": "integer", "description": "数据组数"}}, "required": ["count"]}}},
+    {"type": "function", "function": {"name": "test_checker",
+        "description": "用已生成的数据对 checker.py 做自检（标准答案必须全部通过）。这是唯一能测试 checker 的方式。",
+        "parameters": {"type": "object", "properties": {}}}},
+]
+
+def chat_with_tools(sid, messages):
+    """带 function calling 的 DeepSeek 多轮；AI 可读写工作目录文件、调用专用工具运行；返回最终 content"""
+    s = sessions[sid]
+    for _ in range(20):
+        body = json.dumps({"model": "deepseek-chat", "messages": messages, "temperature": 0.6,
+                           "stream": False, "tools": TOOLS,
+                           "response_format": {"type": "json_object"}}).encode()
+        req = urllib.request.Request(DEEPSEEK_URL, data=body, headers={
+            "Content-Type": "application/json", "Authorization": "Bearer " + s["api_key"]})
+        with urllib.request.urlopen(req, timeout=300) as r:
+            data = json.loads(r.read())
+        msg = ((data.get("choices") or [{}])[0].get("message") or {})
+        tcs = msg.get("tool_calls")
+        if tcs:
+            messages.append({"role": "assistant", "content": msg.get("content") or "", "tool_calls": tcs})
+            for tc in tcs:
+                try:
+                    args = json.loads(tc.get("function", {}).get("arguments") or "{}")
+                except Exception:
+                    args = {}
+                result = exec_tool(sid, tc.get("function", {}).get("name", ""), args)
+                push_event(sid, "analysis_delta", clean_analysis(f"\n[工具 {tc.get('function',{}).get('name')} → {result[:120]}]\n"))
+                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": result})
+            continue
+        return msg.get("content", "")
+    raise RuntimeError("AI 工具调用次数过多（超过 20 次）")
+
+class _SkipRun(Exception):
+    """标记：数据已由 AI 工具在工作目录生成，跳过本地运行直接落盘"""
+
 MAX_AUTO_FIX = 3   # 生成/编译/自检失败时，自动把错误反馈给 AI 重写
 
 def do_generate(sid):
@@ -233,18 +374,36 @@ def do_generate(sid):
             prompt, user_std = build_prompt(sid, n)
             messages = [{"role": "system", "content": "你是专业的 OJ 出题助手，严格只输出合法 JSON 对象，不输出任何其他内容。"}] \
                        + s["messages"] + [{"role": "user", "content": prompt}]
-            gen = fetch_generation(sid, messages)
+            gen = extract_json(chat_with_tools(sid, messages))
             analysis = (gen.get("analysis") or "").strip()
             if analysis:
                 push_event(sid, "analysis_text", clean_analysis(analysis))
             gen_code = (gen.get("gen_code") or "").strip()
-            if not gen_code:
-                raise RuntimeError("DeepSeek 未返回 gen_code")
-            sol_code = s["std_code"].strip() if user_std else (gen.get("sol_code") or "").strip()
-            if not sol_code:
-                raise RuntimeError("缺少标准解法代码")
+            sol_code = (gen.get("sol_code") or "").strip()
             ck_code = (gen.get("checker_code") or "").strip() if s["need_checker"] else ""
             cfg_yaml = (gen.get("config_yaml") or "").strip()
+            # 若 AI 通过工具在工作目录写了代码，优先使用文件内容
+            ws = session_ws(sid)
+            if not gen_code and os.path.exists(os.path.join(ws, "gen.py")):
+                gen_code = open(os.path.join(ws, "gen.py"), encoding="utf-8").read()
+            if not sol_code and not user_std:
+                if os.path.exists(os.path.join(ws, "sol.py")):
+                    sol_code = open(os.path.join(ws, "sol.py"), encoding="utf-8").read()
+                elif os.path.exists(os.path.join(ws, "sol.cpp")):
+                    sol_code = open(os.path.join(ws, "sol.cpp"), encoding="utf-8").read()
+                    s["std_lang"] = "cpp17"
+                    user_std = True
+            if not ck_code and os.path.exists(os.path.join(ws, "checker.py")):
+                ck_code = open(os.path.join(ws, "checker.py"), encoding="utf-8").read()
+            if not gen_code:
+                raise RuntimeError("DeepSeek 未返回 gen_code（也未用 write_file 写入 gen.py）")
+            ws_has_data = any(re.fullmatch(r"\d+\.in", f) for f in (os.listdir(ws) if os.path.isdir(ws) else []))
+            if not sol_code and not ws_has_data:
+                raise RuntimeError("缺少标准解法代码（且未通过 run_generator 生成数据）")
+            if not sol_code:
+                sol_code = ""   # 数据已由 AI 工具（run_generator）生成，本地不再需要 sol
+            if not user_std and sol_code:
+                s["std_code"] = sol_code
             s["gen_code"], s["sol_code"], s["ck_code"], s["config_yaml"] = gen_code, sol_code, ck_code, cfg_yaml
             push_event(sid, "code", {"gen_code": gen_code, "sol_code": sol_code,
                                      "checker": ck_code, "config_yaml": cfg_yaml, "user_std": user_std})
@@ -268,9 +427,23 @@ def do_generate(sid):
                 for f in os.listdir(out_dir):
                     if re.fullmatch(r"\d+\.(in|out|score)", f):
                         os.remove(os.path.join(out_dir, f))
+                # AI 已通过 run_generator 在工作目录生成数据时，直接复制落盘
                 score_each = round(100.0 / n, 2)
                 errors, ok_n = [], 0
-                for i in range(1, n + 1):
+                ws_files = os.listdir(ws) if os.path.isdir(ws) else []
+                skip_run = bool(any(re.fullmatch(r"\d+\.in", f) for f in ws_files))
+                if skip_run:
+                    from shutil import copyfile as _cp
+                    cnt = 0
+                    for f in ws_files:
+                        if re.fullmatch(r"\d+\.(in|out|score)", f):
+                            _cp(os.path.join(ws, f), os.path.join(out_dir, f))
+                            cnt += 1
+                    push_event(sid, "progress", {"i": 1, "n": 1, "msg": f"复制工作目录数据落盘（{cnt} 个文件）..."})
+                    ok_n = max(int(f.split(".")[0]) for f in ws_files if re.fullmatch(r"\d+\.in", f))
+                    errors = []
+                if not skip_run:
+                  for i in range(1, n + 1):
                     push_event(sid, "progress", {"i": i, "n": n, "msg": f"正在生成第 {i}/{n} 组数据..."})
                     ok = False
                     for attempt in (1, 2):
@@ -369,6 +542,16 @@ class ChatMsgReq(BaseModel):
     session_id: str
     user_msg: str
 
+class ChatUpdateReq(BaseModel):
+    session_id: str
+    count: Optional[int] = None
+    need_checker: Optional[bool] = None
+    checker_req: Optional[str] = None
+    extra_req: Optional[str] = None
+    std_code: Optional[str] = None
+    std_lang: Optional[str] = None
+    api_key: Optional[str] = None
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "zxt-datamaker", "sessions": len(sessions)}
@@ -432,3 +615,40 @@ async def chat_events(session_id: str, since: int = 0):
     # done 只认本轮（round_start 之后）的 done/error，避免历史结果导致轮询提前停止
     done = any(e["type"] in ("done", "error") and e["seq"] >= rs for e in events[session_id])
     return {"events": evs, "done": done, "next_since": evs[-1]["seq"] + 1 if evs else since}
+
+@app.post("/chat/update")
+async def chat_update(req: ChatUpdateReq):
+    """会话中调整参数并触发重新生成"""
+    sid = req.session_id
+    if sid not in sessions:
+        raise HTTPException(404, "会话不存在或已过期")
+    s = sessions[sid]
+    changed = []
+    if req.count is not None and 1 <= req.count <= 50:
+        s["count"] = req.count; changed.append(f"组数={req.count}")
+    if req.need_checker is not None:
+        s["need_checker"] = req.need_checker; changed.append(f"checker={'开' if req.need_checker else '关'}")
+    if req.checker_req is not None:
+        s["checker_req"] = req.checker_req.strip(); changed.append("checker要求")
+    if req.extra_req is not None:
+        s["extra_req"] = req.extra_req.strip(); changed.append("额外要求")
+    if req.std_code is not None:
+        s["std_code"] = req.std_code; changed.append("std")
+    if req.std_lang is not None and req.std_lang in STDS:
+        s["std_lang"] = req.std_lang
+    if req.api_key:
+        s["api_key"] = req.api_key
+    if not changed:
+        raise HTTPException(400, "没有需要更新的参数")
+    # 清空工作目录旧文件（新参数新开始）
+    ws = session_ws(sid)
+    for f in os.listdir(ws):
+        try: os.remove(os.path.join(ws, f))
+        except Exception: pass
+    s["last_user_req"] = "参数已更新（" + "，".join(changed) + "），请按新参数重新生成完整数据。"
+    s["messages"].append({"role": "user", "content": "参数已更新（" + "，".join(changed) + "），请重新生成。"})
+    s["round_start"] = _event_seq[sid]
+    s["last_result"] = None
+    push_event(sid, "user", "⚙️ 参数已调整：" + "，".join(changed) + "，重新生成中...")
+    threading.Thread(target=do_generate, args=(sid,), daemon=True).start()
+    return {"ok": True, "session_id": sid, "changed": changed}

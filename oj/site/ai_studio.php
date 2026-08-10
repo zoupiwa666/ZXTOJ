@@ -78,6 +78,7 @@ progress{flex:1;height:4px;accent-color:#5af;border:none;background:#222}
       <label style="font-size:12px;color:#999"><input type="checkbox" id="cCk" style="width:auto"> 需要 checker</label>
       <label style="font-size:12px;color:#999"><input type="checkbox" id="cSaveKey" style="width:auto"> 记住 key</label>
       <button class="btn btn-blue" onclick="startSession()" id="btnStart">🚀 开始会话</button>
+      <button class="btn btn-blue" onclick="saveParams()" id="btnSave" style="display:none">💾 保存参数并重新生成</button>
       <span id="cfgMsg" style="font-size:12px;color:#999"></span>
     </div>
   </div>
@@ -88,6 +89,7 @@ progress{flex:1;height:4px;accent-color:#5af;border:none;background:#222}
   <div class="input-bar">
     <input id="userMsg" placeholder="提出修改要求，如：把第1组改成极限大数据 / checker 加个特判..." disabled>
     <button class="btn btn-blue" onclick="sendMsg()" id="btnSend" disabled>发送</button>
+    <button class="btn btn-blue" onclick="openParams()" id="btnParams" style="display:none">⚙️ 调整参数</button>
     <button class="btn btn-green" onclick="applyData()" id="btnApply" disabled>✓ 应用数据</button>
   </div>
 </div>
@@ -96,6 +98,7 @@ progress{flex:1;height:4px;accent-color:#5af;border:none;background:#222}
 const pid = <?=json_encode($pid)?>;
 const urlSid = <?=json_encode($sid)?>;
 let sessionId = urlSid || null, since = 0, pollTimer = null, generating = false;
+let curCfg = {count:10, need_checker:false, checker_req:'', extra_req:'', std_code:'', std_lang:'python3'};
 
 function addMsg(html, cls){ const d=document.createElement('div'); d.className='msg '+cls; d.innerHTML=html; document.getElementById('chatBox').appendChild(d); chatBox.scrollTop=chatBox.scrollHeight; return d; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -212,7 +215,11 @@ async function startSession(){
     const d = await r.json();
     if(!d.ok){ document.getElementById('cfgMsg').textContent = d.message; btn.disabled=false; return; }
     sessionId = d.session_id; since = 0; generating = true;
+    curCfg = {count: document.getElementById('cCount').value, need_checker: document.getElementById('cCk').checked,
+              checker_req: document.getElementById('cCkReq').value, extra_req: document.getElementById('cExtra').value,
+              std_code: document.getElementById('cStd').value, std_lang: document.getElementById('cLang').value};
     document.getElementById('cfgBox').style.display = 'none';
+    document.getElementById('btnParams').style.display = '';
     // 会话独立 URL：/chat/题目编号/sessionid（可刷新恢复/分享）
     history.replaceState(null, '', '/chat/' + encodeURIComponent(document.getElementById('cPid').value.trim() || pid) + '/' + sessionId);
     document.getElementById('userMsg').disabled = false;
@@ -250,6 +257,45 @@ async function sendMsg(){
   }catch(e){ addMsg('❌ 发送失败', 'err'); generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false; }
 }
 
+function openParams(){
+  document.getElementById('cfgBox').style.display = '';
+  document.getElementById('btnStart').style.display = 'none';
+  document.getElementById('btnSave').style.display = '';
+  document.querySelector('.config-box h3').textContent = '⚙️ 调整参数（保存后重新生成，不影响已生成数据）';
+  document.getElementById('cCount').value = curCfg.count;
+  document.getElementById('cCk').checked = curCfg.need_checker;
+  document.getElementById('cCkReq').value = curCfg.checker_req;
+  document.getElementById('cExtra').value = curCfg.extra_req;
+  document.getElementById('cStd').value = curCfg.std_code;
+  document.getElementById('cLang').value = curCfg.std_lang;
+  document.getElementById('cCkReq').disabled = !curCfg.need_checker;
+}
+async function saveParams(){
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; document.getElementById('cfgMsg').textContent = '保存并重新生成中...';
+  const fd = new FormData();
+  fd.append('session_id', sessionId);
+  fd.append('count', document.getElementById('cCount').value);
+  fd.append('need_checker', document.getElementById('cCk').checked ? '1':'0');
+  fd.append('checker_req', document.getElementById('cCkReq').value);
+  fd.append('extra_req', document.getElementById('cExtra').value);
+  fd.append('std_code', document.getElementById('cStd').value);
+  fd.append('std_lang', document.getElementById('cLang').value);
+  try{
+    const r = await fetch('/api/ai_studio_update.php', {method:'POST', body:fd});
+    const d = await r.json();
+    if(!d.ok){ document.getElementById('cfgMsg').textContent = d.message; btn.disabled=false; return; }
+    curCfg = {count: fd.get('count'), need_checker: fd.get('need_checker')==='1', checker_req: fd.get('checker_req'),
+              extra_req: fd.get('extra_req'), std_code: fd.get('std_code'), std_lang: fd.get('std_lang')};
+    document.getElementById('cfgMsg').textContent = '';
+    btn.disabled = false;
+    document.getElementById('cfgBox').style.display = 'none';
+    document.getElementById('btnStart').style.display = '';
+    document.getElementById('btnSave').style.display = 'none';
+    document.querySelector('.config-box h3').textContent = '会话配置（开始后不可改，可多轮对话修改数据）';
+    poll();
+  }catch(e){ document.getElementById('cfgMsg').textContent = '保存失败'; btn.disabled=false; }
+}
 async function applyData(){
   const fd = new FormData();
   fd.append('problem_id', document.getElementById('cPid').value.trim() || pid);
