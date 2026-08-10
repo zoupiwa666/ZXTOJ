@@ -101,16 +101,25 @@ function addMsg(html, cls){ const d=document.createElement('div'); d.className='
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function codeBlock(title, code){ return '<details class="code-block"><summary>'+title+'（点击展开 '+code.length+' 字符）</summary><pre></pre></details>'; }
 
-let curThink = null;
+let curThink = null, roundNo = 0;
 function renderEvent(ev){
   const box = document.getElementById('chatBox');
   if(ev.type==='info'){ addMsg('🛠 ' + esc(ev.data), 'sys'); }
-  else if(ev.type==='user'){ addMsg(esc(ev.data), 'user'); }
+  else if(ev.type==='user'){ roundNo++; curThink=null; addMsg(esc(ev.data), 'user'); }
   else if(ev.type==='analysis_delta'){
-    if(!curThink){ curThink = addMsg('', 'ai'); const t=document.createElement('div'); t.className='ai-think'; t.textContent='🧠 AI 思考中：'; curThink.appendChild(t); curThink._text=document.createElement('div'); curThink.appendChild(curThink._text); }
+    if(!curThink || curThink._round !== roundNo){
+      curThink = addMsg('', 'ai'); curThink._round = roundNo;
+      const t=document.createElement('div'); t.className='ai-think'; t.textContent='🧠 AI 思考中：'; curThink.appendChild(t);
+      curThink._text=document.createElement('div'); curThink.appendChild(curThink._text);
+    }
     curThink._text.textContent += ev.data; box.scrollTop=box.scrollHeight;
   }
-  else if(ev.type==='analysis_end'){ if(curThink){ curThink.classList.add('ai'); } }
+  else if(ev.type==='analysis_end'){ if(curThink) curThink.classList.add('ai'); curThink=null; }
+  else if(ev.type==='analysis_text'){
+    if(curThink && curThink._round === roundNo){ curThink.remove(); }
+    curThink = addMsg('<div class="ai-think">🧠 AI 思考</div><div></div>', 'ai');
+    curThink._round = roundNo; curThink.lastChild.textContent = ev.data;
+  }
   else if(ev.type==='analysis_text'){
     curThink = addMsg('<div class="ai-think">🧠 AI 思考</div><div></div>', 'ai');
     curThink.lastChild.textContent = ev.data;
@@ -135,7 +144,7 @@ function renderEvent(ev){
     p.querySelector('.pt').textContent = ev.data.i + '/' + ev.data.n;
     box.scrollTop = box.scrollHeight;
   }
-  else if(ev.type==='done'){
+  else if(ev.type==='done'){ curThink=null;
     const p = document.getElementById('progLine'); if(p) p.remove();
     addMsg('✅ ' + esc(ev.data.message), 'ai done-box');
     document.getElementById('btnApply').disabled = false;
@@ -144,7 +153,7 @@ function renderEvent(ev){
     generating = false;
     if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
   }
-  else if(ev.type==='error'){
+  else if(ev.type==='error'){ curThink=null;
     const p = document.getElementById('progLine'); if(p) p.remove();
     addMsg('❌ ' + esc(ev.data), 'err');
     generating = false;
