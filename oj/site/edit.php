@@ -163,6 +163,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <button class="btn" style="background:#1a3a5c;color:#5af" onclick="aiGen()">🤖 生成测试数据</button>
+    <a class="btn" style="background:#2a1a4c;color:#a9f;text-decoration:none" href="ai_studio.php?pid=<?=urlencode($pid)?>">💬 AI 工作台（聊天/多轮修改）</a>
     <label style="font-size:11px;color:#666;margin:0"><input type="checkbox" id="aiSaveKey" style="width:auto"> 记住 key</label>
     <span id="aiMsg" style="font-size:12px;color:#999"></span>
   </div>
