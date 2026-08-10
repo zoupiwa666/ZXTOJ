@@ -186,7 +186,13 @@ async function startSession(){
   fd.append('need_checker', document.getElementById('cCk').checked ? '1':'0');
   fd.append('checker_req', document.getElementById('cCkReq').value.trim());
   fd.append('extra_req', document.getElementById('cExtra').value.trim());
-  fd.append('std_code', document.getElementById('cStd').value);
+  const stdVal = document.getElementById('cStd').value;
+  if(!stdLooksLikeCode(stdVal)){
+    document.getElementById('cfgMsg').textContent = '⚠️ std 框内容看起来不是代码（只允许 C/C++/Python 代码或留空），请检查';
+    btn.disabled = false;
+    return;
+  }
+  fd.append('std_code', stdVal);
   fd.append('std_lang', document.getElementById('cLang').value);
   fd.append('save_key', document.getElementById('cSaveKey').checked ? '1':'0');
   try{
@@ -246,6 +252,20 @@ async function applyData(){
 }
 
 document.getElementById('userMsg').addEventListener('keydown', e => { if(e.key==='Enter') sendMsg(); });
+// std 语言自动识别：填 C/C++ 代码自动切 C++，Python 代码自动切 Python3
+document.getElementById('cStd').addEventListener('input', function(){
+  const v = this.value.trim();
+  const lang = document.getElementById('cLang');
+  if(!v || lang.dataset.auto) return;
+  if(/^\s*#\s*include/.test(v) || /\bint\s+main\s*\(/.test(v)) lang.value = 'cpp17';
+  else if(/^\s*(def |import |from |print\(|n=input)/.test(v)) lang.value = 'python3';
+});
+document.getElementById('cLang').addEventListener('change', function(){ delete this.dataset.auto; });
+// 提交前校验 std 是否像代码
+function stdLooksLikeCode(v){
+  if(!v.trim()) return true;                       // 空 = AI 生成，允许
+  return /#\s*include|int\s+main|def\s+|import\s+|from\s+|using\s+namespace|return\s+0|std::|cin>>|cout<<|printf\(|scanf\(/.test(v);
+}
 // 通过 /chat/pid/sid 进入：恢复会话
 if(urlSid){
   document.getElementById('cfgBox').style.display = 'none';
