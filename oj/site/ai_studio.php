@@ -158,7 +158,7 @@ function poll(){
   if(pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
     try{
-      const r = await fetch('api/ai_studio_events.php?session_id='+sessionId+'&since='+since);
+      const r = await fetch('/api/ai_studio_events.php?session_id='+sessionId+'&since='+since);
       const d = await r.json();
       if(d.ok === false){
         // 会话不存在/失效：停止轮询，提示并允许重新开始
@@ -190,7 +190,7 @@ async function startSession(){
   fd.append('std_lang', document.getElementById('cLang').value);
   fd.append('save_key', document.getElementById('cSaveKey').checked ? '1':'0');
   try{
-    const r = await fetch('api/ai_studio_start.php', {method:'POST', body:fd});
+    const r = await fetch('/api/ai_studio_start.php', {method:'POST', body:fd});
     const d = await r.json();
     if(!d.ok){ document.getElementById('cfgMsg').textContent = d.message; btn.disabled=false; return; }
     sessionId = d.session_id; since = 0; generating = true;
@@ -216,7 +216,7 @@ async function sendMsg(){
   const fd = new FormData();
   fd.append('session_id', sessionId); fd.append('user_msg', msg);
   try{
-    const r = await fetch('api/ai_studio_message.php', {method:'POST', body:fd});
+    const r = await fetch('/api/ai_studio_message.php', {method:'POST', body:fd});
     const d = await r.json();
     if(!d.ok){
       addMsg('❌ ' + (d.message||'发送失败'), 'err');
@@ -236,7 +236,7 @@ async function applyData(){
   const fd = new FormData();
   fd.append('problem_id', document.getElementById('cPid').value.trim() || pid);
   try{
-    const r = await fetch('api/ai_studio_apply.php', {method:'POST', body:fd});
+    const r = await fetch('/api/ai_studio_apply.php', {method:'POST', body:fd});
     const d = await r.json();
     addMsg(d.ok ? '💾 ' + d.message : '❌ ' + (d.message||'应用失败'), d.ok ? 'ai done-box' : 'err');
   }catch(e){ addMsg('❌ 应用失败', 'err'); }
