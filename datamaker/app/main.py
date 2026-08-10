@@ -347,14 +347,23 @@ def chat_with_tools(sid, messages):
         msg = ((data.get("choices") or [{}])[0].get("message") or {})
         tcs = msg.get("tool_calls")
         if tcs:
-            messages.append({"role": "assistant", "content": msg.get("content") or "", "tool_calls": tcs})
+            # 输出 AI 在本轮工具前的思考/说明文本（非流式一次性推给前端）
+            ai_txt = (msg.get("content") or "").strip()
+            if ai_txt:
+                push_event(sid, "analysis_delta", clean_analysis(ai_txt))
+                push_event(sid, "analysis_delta", "\n")
+            messages.append({"role": "assistant", "content": ai_txt, "tool_calls": tcs})
             for tc in tcs:
                 try:
                     args = json.loads(tc.get("function", {}).get("arguments") or "{}")
                 except Exception:
                     args = {}
-                result = exec_tool(sid, tc.get("function", {}).get("name", ""), args)
-                push_event(sid, "analysis_delta", clean_analysis(f"\n[工具 {tc.get('function',{}).get('name')} → {result[:120]}]\n"))
+                name = tc.get("function", {}).get("name", "")
+                result = exec_tool(sid, name, args)
+                status = "ok" if not str(result).startswith(("错误", "异常", "没有", "未知")) else "err"
+                # 独立工具事件（持久化，前端折叠卡片展示参数与结果）
+                push_event(sid, "tool", {"name": name, "args": args,
+                                         "result": str(result)[:400], "status": status})
                 messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": result})
             continue
         return msg.get("content", "")
@@ -377,7 +386,7 @@ def do_generate(sid):
                 "content": f"你上次生成的代码有问题，请修复后重新输出完整 JSON：{last_err}"})
         try:
             prompt, user_std = build_prompt(sid, n)
-            messages = [{"role": "system", "content": "你是专业的 OJ 出题助手，严格只输出合法 JSON 对象，不输出任何其他内容。"}] \
+            messages = [{"role": "system", "content": "你是专业的 OJ 出题助手。可用 write_file/read_file/list_files/run_generator/test_checker 工具（写代码、生成数据、自检 checker）；每次调用工具前先用一两句话说明你的思考与意图（供用户查看进度）；最终仍严格输出合法 JSON 对象。"}] \
                        + s["messages"] + [{"role": "user", "content": prompt}]
             gen = extract_json(chat_with_tools(sid, messages))
             analysis = (gen.get("analysis") or "").strip()

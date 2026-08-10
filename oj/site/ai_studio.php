@@ -45,6 +45,15 @@ progress{flex:1;height:4px;accent-color:#5af;border:none;background:#222}
 .input-bar input:focus{border-color:#5af}
 .input-bar input:disabled{opacity:.4}
 .done-box{color:#2ecc71;font-size:13px}
+.tool-call{border:1px solid #2a3a4a;border-radius:6px;margin:6px 0;background:#0f1520;overflow:hidden}
+.tool-call summary{cursor:pointer;padding:6px 12px;font-size:12px;color:#8af;letter-spacing:.5px;list-style:none;display:flex;align-items:center;gap:6px}
+.tool-call summary:hover{background:#16202e}
+.tool-call summary::before{content:'▸';color:#5af}
+.tool-call[open] summary::before{content:'▾'}
+.tool-call .tool-body{padding:8px 12px;border-top:1px solid #222}
+.tool-call .tb-title{font-size:10px;color:#666;letter-spacing:1px;margin:6px 0 3px}
+.tool-call pre{margin:0;background:#0a0e14;border:1px solid #1c2733;padding:8px;font-size:11px;line-height:1.5;overflow-x:auto;color:#bdb;white-space:pre-wrap;word-break:break-all}
+.tool-call .tb-ok{color:#2ecc71}.tool-call .tb-err{color:#ff6b6b}
 </style>
 <div class="studio-wrap">
   <div class="studio-head">
@@ -139,6 +148,25 @@ function renderEvent(ev){
       const pre = document.createElement('pre'); pre.textContent = code; d.appendChild(pre);
       wrap.appendChild(d);
     }
+  }
+  else if(ev.type==='tool'){
+    const t = ev.data || {};
+    const det = document.createElement('details');
+    det.className = 'tool-call';
+    const sum = document.createElement('summary');
+    const st = t.status === 'err' ? '<span class="tb-err">⚠️ 失败</span>' : '<span class="tb-ok">✓</span>';
+    sum.innerHTML = '🛠 ' + (t.name||'tool') + ' ' + st;
+    det.appendChild(sum);
+    const body = document.createElement('div'); body.className='tool-body';
+    const a1 = document.createElement('div'); a1.className='tb-title'; a1.textContent='参数'; body.appendChild(a1);
+    const pre1 = document.createElement('pre'); pre1.textContent = JSON.stringify(t.args||{}, null, 1); body.appendChild(pre1);
+    const a2 = document.createElement('div'); a2.className='tb-title'; a2.textContent='结果'; body.appendChild(a2);
+    const pre2 = document.createElement('pre'); pre2.textContent = t.result || ''; body.appendChild(pre2);
+    det.appendChild(body);
+    const wrap = document.createElement('div'); wrap.className='msg ai'; wrap.style.padding='4px 6px';
+    wrap.appendChild(det);
+    document.getElementById('chatBox').appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
   }
   else if(ev.type==='progress'){
     let p = document.getElementById('progLine');
