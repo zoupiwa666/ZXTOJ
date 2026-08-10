@@ -119,8 +119,8 @@ def build_prompt(sid, n):
     if user_std:
         std_note = "标准解法(std)已由用户提供，无需生成 sol_code。"
     else:
-        std_note = "请同时生成标准解法 sol_code（从 stdin 读输入、向 stdout 输出答案）。"
-        fields += ',"sol_code":"Python3 标准解法代码。从 stdin 读取输入，向 stdout 输出正确答案，不要输出多余内容"'
+        std_note = "请同时生成标准解法 sol_code（从 stdin 读输入、向 stdout 输出答案）。若用户 std 语言是 C/C++，sol_code 必须是完整程序：含 int main()（从 stdin 读入、stdout 输出），不要只写函数或片段。"
+        fields += ',"sol_code":"标准解法代码（与用户 std 语言一致：Python3 直接可运行；C/C++ 必须含 int main() 完整可编译程序）。从 stdin 读取输入，向 stdout 输出正确答案，不要输出多余内容"'
     fields += ('",config_yaml":"yaml 文本，含 name/time_limit/memory_limit/test_cases 字段；'
                '评分使用默认模式，写 scoring_mode: default，不需要写 scores 数组（每个测试点默认平分）"')
     if s["need_checker"]:
@@ -263,7 +263,7 @@ def exec_tool(sid, name, args):
             if os.path.exists(os.path.join(ws, "sol.cpp")):
                 rc, o, e = run(["g++", "-std=c++17", "-O2", "-o", os.path.join(ws, "sol"), os.path.join(ws, "sol.cpp"), "-lm"], 60, ws)
                 if rc != 0:
-                    return "sol.cpp 编译失败：\n" + e[-300:]
+                    return "sol.cpp 编译失败：\n" + hint_compile_err(e[-400:])
                 std_cmd = [os.path.join(ws, "sol")]
             else:
                 std_cmd = ["python3", os.path.join(ws, "sol.py")]
@@ -332,6 +332,14 @@ TOOLS = [
         "description": "用已生成的数据对 checker.py 做自检（标准答案必须全部通过）。这是唯一能测试 checker 的方式。",
         "parameters": {"type": "object", "properties": {}}}},
 ]
+
+def hint_compile_err(e: str) -> str:
+    """识别常见编译错误并给出修复方向提示"""
+    if "undefined reference to `main'" in e or "undefined reference to 'main'" in e:
+        return "错误：代码缺少 int main() 入口函数（请补上 int main() { ... return 0; }）"
+    if "collect2: error" in e:
+        return "链接错误（collect2），常见原因：缺 main / 缺符号，请检查代码完整性"
+    return e
 
 def chat_with_tools(sid, messages):
     """带 function calling 的 DeepSeek 多轮；AI 可读写工作目录文件、调用专用工具运行；返回最终 content"""
@@ -431,7 +439,7 @@ def do_generate(sid):
                     cc = "gcc" if std_lang == "c" else "g++"
                     rc, o, e = run([cc, std_flag, "-O2", "-o", f"{work}/std", f"{work}/std.cpp", "-lm"], 60, work)
                     if rc != 0:
-                        raise RuntimeError("std 编译失败：\n" + e[-500:])
+                        raise RuntimeError("std 编译失败：\n" + hint_compile_err(e[-500:]))
                     std_cmd = [f"{work}/std"]
                 else:
                     open(f"{work}/std.py", "w", encoding="utf-8").write(sol_code)
