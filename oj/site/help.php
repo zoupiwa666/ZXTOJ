@@ -35,6 +35,22 @@ require __DIR__.'/inc/header.php';
 .tut-table .v-ac{color:#2ecc71}.tut-table .v-wa{color:#ff4f4f}.tut-table .v-tle{color:#ffab00}
 .tut-table .v-mle{color:#d500f9}.tut-table .v-re{color:#f8603a}.tut-table .v-ole{color:#0091ea}
 .tut-table .v-ce{color:#ff9100}.tut-table .v-se{color:#999}
+.subtab{display:flex;gap:0;border-bottom:1px solid #222;margin:0 0 16px;flex-wrap:wrap}
+.subtab .st{padding:7px 16px;color:#888;cursor:pointer;font-size:12px;border-bottom:2px solid transparent;transition:.15s;user-select:none;letter-spacing:.5px}
+.subtab .st:hover{color:#fff}
+.subtab .st.active{color:#fff;border-bottom-color:#5af}
+.subtab.l2{margin-top:4px}
+.subtab.l2 .st{font-size:11.5px;padding:6px 13px}
+.subtab.l3{border-bottom-color:#1a1a1a}
+.subtab.l3 .st{font-size:11px;padding:5px 11px;border-bottom-color:#1a1a1a}
+.subtab.l3 .st.active{color:#7ee0a0;border-bottom-color:#2ecc71}
+.subpanel{display:none}
+.subpanel.active{display:block}
+.subpanel .tut-h{font-size:13px;color:#5af;font-weight:400;margin:16px 0 10px;letter-spacing:.5px}
+.subpanel .tut-h:first-child{margin-top:0}
+.subpanel ol,.subpanel ul{margin:0 0 12px;padding-left:22px}
+.subpanel li{font-size:12.5px;color:#bbb;line-height:1.9}
+.subpanel li b{color:#eee;font-weight:500}
 @media(max-width:820px){.tut-wrap{flex-direction:column}.tut-nav{position:static;width:100%;display:flex;flex-wrap:wrap;gap:0}.tut-nav a{flex:0 0 50%}}
 </style>
 <div class="tut-wrap">
@@ -47,9 +63,8 @@ require __DIR__.'/inc/header.php';
     <a data-t="5"><i class="fa-solid fa-file-arrow-down"></i> 我的文件</a>
     <a data-t="6"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 造数据</a>
     <a data-t="7"><i class="fa-solid fa-user-gear"></i> 题目管理</a>
-    <a data-t="8"><i class="fa-solid fa-clipboard-check"></i> checker 编写</a>
-    <a data-t="9"><i class="fa-solid fa-users"></i> 群组与权限</a>
-    <a data-t="10"><i class="fa-solid fa-circle-question"></i> 常见问题</a>
+    <a data-t="8"><i class="fa-solid fa-users"></i> 群组与权限</a>
+    <a data-t="9"><i class="fa-solid fa-circle-question"></i> 常见问题</a>
   </nav>
 
   <div class="tut-content">
@@ -198,127 +213,125 @@ require __DIR__.'/inc/header.php';
       </div>
     </section>
 
-    <!-- ======== 7 题目管理 ======== -->
+    <!-- ======== 7 题目管理（三级子栏目） ======== -->
     <section class="tut-section" id="tut-7">
       <div class="tut-card">
         <h1>题目管理（管理员）</h1>
-        <div class="desc">创建题目、配置数据与 checker、控制访问。</div>
-        <h2><i class="fa-solid fa-circle-1"></i> 创建题目</h2>
-        <ol><li>题库页点「新建题目」（管理员）。</li><li>填写编号（如 P1000）与题面，保存。</li></ol>
-        <h2><i class="fa-solid fa-circle-2"></i> 四栏目配置页</h2>
-        <p style="font-size:12px;color:#bbb;line-height:1.8">题目编辑页分 4 个栏目（点击 Tab 切换）：</p>
-        <table class="tut-table">
-          <tr><th>栏目</th><th>用途</th></tr>
-          <tr><td>题面配置</td><td>标题、背景、描述、输入输出格式、提示、样例</td></tr>
-          <tr><td>数据 + config.yaml</td><td>config 可视化表单、数据包导入、checker 编辑器、数据概览</td></tr>
-          <tr><td>权限配置</td><td>授权用户或组查看隐藏题目</td></tr>
-          <tr><td>AI 功能</td><td>AI 助手入口与数据状态</td></tr>
-        </table>
-        <h2><i class="fa-solid fa-circle-3"></i> 导入数据包</h2>
-        <ol>
-          <li>「数据 + config.yaml」栏目：上传 zip/tar.gz 或填服务器路径/URL。</li>
-          <li>数据包需包含 <code>N.in / N.out</code>；<b>没有 config.yaml 会自动补全</b>（自动统计组数）。</li>
-          <li>自动扫描 <code>checker.py</code> / <code>checker.cpp</code>（都有时优先 Python）并落盘。</li>
-        </ol>
-        <h2><i class="fa-solid fa-circle-4"></i> config.yaml 可视化</h2>
-        <ul>
-          <li>表单改 <b>名称 / 时间限制 / 内存限制 / 评分模式</b>，保存后同步文件与数据库。</li>
-          <li>改题面标题也会自动同步 config 的 name。</li>
-        </ul>
-        <h2><i class="fa-solid fa-circle-5"></i> 编写 checker（特殊判题）</h2>
-        <p style="font-size:12px;color:#bbb;line-height:1.8">在页面「checker 编辑器」直接编写：</p>
-        <ul>
-          <li><b>Python 模式</b>：定义 <code>check(input, output, expected)</code> 函数，返回 True/False。</li>
-          <li><b>C++ testlib 模式</b>：<code>#include "testlib.h"</code>，<code>quitf(_ok/_wa)</code> 判定，自动预编译缓存加速。</li>
-        </ul>
-      </div>
-    </section>
+        <div class="desc">创建题目、配置数据包与 checker、AI 造数据。编辑页分 4 栏目，此处按功能组织讲解。</div>
 
-    <!-- ======== 8 checker 编写 ======== -->
-    <section class="tut-section" id="tut-8">
-      <div class="tut-card">
-        <h1>checker 编写（特殊判题 SPJ）</h1>
-        <div class="desc">当题目答案不唯一、需要浮点误差判断或验证构造合法性时，用 checker 代替标准比对。</div>
+        <div class="subtab">
+          <div class="st active" data-target="tm-statement">题面配置</div>
+          <div class="st" data-target="tm-data">数据包配置</div>
+          <div class="st" data-target="tm-ai">AI 功能</div>
+        </div>
 
-        <h2><i class="fa-solid fa-circle-1"></i> 评测端如何调用（传参方式）</h2>
-        <p style="font-size:12px;color:#bbb;line-height:1.8">OJ 支持两种 checker，评测时按数据目录文件自动识别：</p>
-        <table class="tut-table">
-          <tr><th>模式</th><th>文件</th><th>评测端调用方式</th></tr>
-          <tr><td><b>Python</b></td><td><code>checker.py</code></td><td>加载代码后直接调用函数<br><code>check(input, output, expected)</code>，三个参数均为<b>字符串</b></td></tr>
-          <tr><td><b>C++ testlib</b></td><td><code>checker.cpp</code></td><td>自动编译为可执行文件，运行：<br><code>checker 输入文件 选手输出文件 标准答案文件</code></td></tr>
-        </table>
-        <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> 两种文件都存在时<b>优先 Python 模式</b>（checker.py）。</div>
+        <!-- 题面配置 -->
+        <div class="subpanel active" id="tm-statement">
+          <div class="tut-h">创建题目</div>
+          <ol>
+            <li>题库页点「新建题目」（管理员）。</li>
+            <li>填写<b>编号</b>（如 P1000）与<b>标题</b>，保存后进入编辑页。</li>
+          </ol>
+          <div class="tut-h">题面字段</div>
+          <ul>
+            <li><b>背景 / 描述 / 输入格式 / 输出格式 / 提示</b>：支持 Markdown 与 LaTeX 公式。</li>
+            <li><b>可见性</b>：公开（所有人）或隐藏（需授权）。</li>
+            <li><b>样例</b>：可添加多组，显示在题面中。</li>
+          </ul>
+          <div class="tut-h">编辑页四栏目</div>
+          <table class="tut-table">
+            <tr><th>栏目</th><th>用途</th></tr>
+            <tr><td>题面配置</td><td>标题、背景、描述、输入输出格式、提示、样例</td></tr>
+            <tr><td>数据 + config.yaml</td><td>config 可视化、数据包导入、checker 编辑器</td></tr>
+            <tr><td>权限配置</td><td>授权用户/组查看隐藏题目</td></tr>
+            <tr><td>AI 功能</td><td>AI 助手入口与数据状态</td></tr>
+          </table>
+        </div>
 
-        <h2><i class="fa-solid fa-circle-2"></i> Python checker 写法</h2>
-        <p style="font-size:12px;color:#bbb;line-height:1.8">在题目「checker 编辑器」选 Python，定义函数（评测端会 <code>exec</code> 你的代码后调用）：</p>
-        <div class="codeblock">def check(input, output, expected):
-    # input   : 该测试点的输入内容（字符串）
-    # output  : 选手程序的输出内容（字符串）
-    # expected: 标准答案 .out 内容（字符串）
-    # 返回 True / False，或 (是否通过:bool, 提示:str, 得分占比:float)
-    return output.strip() == expected.strip()</div>
-        <h2><i class="fa-solid fa-circle-3"></i> Python 常见写法示例</h2>
-        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>忽略行末空格与末尾空行</b>：</p>
-        <div class="codeblock">def check(input, output, expected):
+        <!-- 数据包配置 -->
+        <div class="subpanel" id="tm-data">
+          <div class="subtab l2">
+            <div class="st active" data-target="pk-checker">checker 配置</div>
+            <div class="st" data-target="pk-format">数据包格式</div>
+            <div class="st" data-target="pk-config">config.yaml</div>
+          </div>
+
+          <!-- checker 配置 -->
+          <div class="subpanel active" id="pk-checker">
+            <div class="tut-h">checker 是什么</div>
+            <p style="font-size:12px;color:#bbb;line-height:1.8">当答案不唯一、需要浮点误差判断或验证构造合法性时，用 checker 代替标准比对。编辑页「数据 + config.yaml」栏目底部有<b>checker 编辑器</b>，两种模式：</p>
+            <div class="subtab l3">
+              <div class="st active" data-target="ck-py">Python checker</div>
+              <div class="st" data-target="ck-cpp">C++ testlib checker</div>
+            </div>
+
+            <div class="subpanel active" id="ck-py">
+              <div class="tut-h">Python checker · 传参方式</div>
+              <p style="font-size:12px;color:#bbb;line-height:1.8">评测端加载代码后直接调用函数 <code>check(input, output, expected)</code>，<b>三个参数均为字符串</b>：</p>
+              <table class="tut-table">
+                <tr><th>参数</th><th>含义</th></tr>
+                <tr><td><code>input</code></td><td>该测试点的输入内容（.in）</td></tr>
+                <tr><td><code>output</code></td><td>选手程序的输出内容</td></tr>
+                <tr><td><code>expected</code></td><td>标准答案（.out）</td></tr>
+              </table>
+              <div class="tut-h">返回值</div>
+              <div class="codeblock">True / False
+或 (是否通过:bool, 提示:str, 得分占比:float)</div>
+              <div class="tut-h">示例：忽略行末空格</div>
+              <div class="codeblock">def check(input, output, expected):
     def norm(s):
         return '\n'.join(line.rstrip() for line in s.strip().splitlines())
     return norm(output) == norm(expected)</div>
-        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>浮点误差 1e-6</b>：</p>
-        <div class="codeblock">def check(input, output, expected):
-    a = float(output.strip())
-    b = float(expected.strip())
+              <div class="tut-h">示例：浮点误差 1e-6</div>
+              <div class="codeblock">def check(input, output, expected):
+    a, b = float(output.strip()), float(expected.strip())
     if abs(a - b) <= 1e-6:
         return True, 'OK', 1.0
     return False, f'expected {b}, got {a}', 0.0</div>
-        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>构造题校验（利用 input 判断合法性）</b>：</p>
-        <div class="codeblock">def check(input, output, expected):
-    # 例：要求输出 1..n 的一个排列
+              <div class="tut-h">示例：构造题校验（利用 input）</div>
+              <div class="codeblock">def check(input, output, expected):
     nums = list(map(int, output.split()))
     n = int(input.split()[0])
     if sorted(nums) == list(range(1, n + 1)):
-        return True, 'valid permutation', 1.0
+        return True, 'valid', 1.0
     return False, 'not a permutation', 0.0</div>
-        <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> 注意：checker 里<b>不要读文件、不要 print</b>；标准答案（expected）必须返回 True。</div>
+              <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> checker 里<b>不要读文件、不要 print</b>；标准答案（expected）必须返回 True。</div>
+            </div>
 
-        <h2><i class="fa-solid fa-circle-4"></i> C++ testlib checker 写法</h2>
-        <p style="font-size:12px;color:#bbb;line-height:1.8">在「checker 编辑器」选 C++，使用官方 <code>testlib.h</code>（评测端自动编译 + 预编译缓存）：</p>
-        <div class="codeblock">#include "testlib.h"
+            <div class="subpanel" id="ck-cpp">
+              <div class="tut-h">C++ testlib checker · 传参方式</div>
+              <p style="font-size:12px;color:#bbb;line-height:1.8">评测端自动编译（<code>g++</code> + 预编译缓存），运行：</p>
+              <div class="codeblock">checker 输入文件 选手输出文件 标准答案文件
+# argv[1] -> inf    argv[2] -> ouf    argv[3] -> ans</div>
+              <div class="tut-h">基本框架</div>
+              <div class="codeblock">#include "testlib.h"
 int main(int argc, char* argv[]) {
-    // 必须第一行调用：注册三个流
-    // argv[1] = 输入文件   -> inf
-    // argv[2] = 选手输出文件 -> ouf
-    // argv[3] = 标准答案文件 -> ans
-    registerTestlibCmd(argc, argv);
-
-    // 读取并比较
-    int ja = ans.readInt();   // 标准答案
-    int pa = ouf.readInt();   // 选手输出
+    registerTestlibCmd(argc, argv);   // 必须第一行
+    int ja = ans.readInt();           // 标准答案
+    int pa = ouf.readInt();           // 选手输出
     if (ja != pa)
         quitf(_wa, "expected %d, found %d", ja, pa);
     quitf(_ok, "OK");
 }</div>
-        <h2><i class="fa-solid fa-circle-5"></i> testlib 常用读取函数</h2>
-        <table class="tut-table">
-          <tr><th>函数</th><th>含义</th><th>典型用法</th></tr>
-          <tr><td><code>readInt()</code></td><td>读一个整数</td><td><code>ans.readInt(); ouf.readInt();</code></td></tr>
-          <tr><td><code>readLong()</code></td><td>读一个 64 位整数</td><td><code>ouf.readLong()</code></td></tr>
-          <tr><td><code>readDouble()</code></td><td>读一个浮点数</td><td><code>ans.readDouble()</code></td></tr>
-          <tr><td><code>readString()</code></td><td>读一整行字符串</td><td><code>ouf.readString()</code></td></tr>
-          <tr><td><code>readToken()</code></td><td>读一个不含空格的词</td><td><code>ouf.readToken()</code></td></tr>
-          <tr><td><code>readWord()</code></td><td>同上（别名）</td><td><code>ans.readWord()</code></td></tr>
-          <tr><td><code>readEoln() / readEof()</code></td><td>读换行 / 读到末尾</td><td>验证输出格式完整性</td></tr>
-        </table>
-        <h2><i class="fa-solid fa-circle-6"></i> testlib 判定函数</h2>
-        <table class="tut-table">
-          <tr><th>函数</th><th>结果</th><th>退出码</th></tr>
-          <tr><td><code>quitf(_ok, "msg", ...)</code></td><td class="v-ac">AC 通过</td><td>0</td></tr>
-          <tr><td><code>quitf(_wa, "msg", ...)</code></td><td class="v-wa">WA 答案错误</td><td>1</td></tr>
-          <tr><td><code>quitf(_pe, "msg", ...)</code></td><td>PE 格式错误（按 WA 处理）</td><td>2</td></tr>
-          <tr><td><code>quitp(_points, "msg", ...)</code></td><td>部分得分（0-1）</td><td>0</td></tr>
-        </table>
-        <h2><i class="fa-solid fa-circle-7"></i> testlib 常见写法示例</h2>
-        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>浮点误差 1e-6</b>：</p>
-        <div class="codeblock">#include "testlib.h"
+              <div class="tut-h">常用读取函数</div>
+              <table class="tut-table">
+                <tr><th>函数</th><th>含义</th></tr>
+                <tr><td><code>readInt() / readLong()</code></td><td>读整数 / 64 位整数</td></tr>
+                <tr><td><code>readDouble()</code></td><td>读浮点数</td></tr>
+                <tr><td><code>readString()</code></td><td>读一整行</td></tr>
+                <tr><td><code>readToken() / readWord()</code></td><td>读一个不含空格的词</td></tr>
+                <tr><td><code>readEoln() / readEof()</code></td><td>读换行 / 读到末尾</td></tr>
+              </table>
+              <div class="tut-h">判定函数</div>
+              <table class="tut-table">
+                <tr><th>函数</th><th>结果</th><th>退出码</th></tr>
+                <tr><td><code>quitf(_ok, ...)</code></td><td class="v-ac">AC</td><td>0</td></tr>
+                <tr><td><code>quitf(_wa, ...)</code></td><td class="v-wa">WA</td><td>1</td></tr>
+                <tr><td><code>quitf(_pe, ...)</code></td><td>PE（按 WA）</td><td>2</td></tr>
+                <tr><td><code>quitp(points, ...)</code></td><td>部分得分 0~1</td><td>0</td></tr>
+              </table>
+              <div class="tut-h">示例：浮点误差 1e-6</div>
+              <div class="codeblock">#include "testlib.h"
 int main(int argc, char* argv[]) {
     registerTestlibCmd(argc, argv);
     double ja = ans.readDouble();
@@ -327,32 +340,105 @@ int main(int argc, char* argv[]) {
         quitf(_wa, "expected %.6f, found %.6f", ja, pa);
     quitf(_ok, "OK");
 }</div>
-        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>读输入辅助判断（inf 流）</b>：</p>
-        <div class="codeblock">#include "testlib.h"
+              <div class="tut-h">示例：读输入辅助判断</div>
+              <div class="codeblock">#include "testlib.h"
 int main(int argc, char* argv[]) {
     registerTestlibCmd(argc, argv);
-    int n = inf.readInt();              // 从输入文件读 n
-    std::string ja = ans.readString();  // 标准答案
-    std::string pa = ouf.readString();  // 选手输出
+    int n = inf.readInt();
+    std::string ja = ans.readString();
+    std::string pa = ouf.readString();
     if (ja != pa) quitf(_wa, "mismatch");
     quitf(_ok, "n=%d ok", n);
 }</div>
-        <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> 必须先用 <code>registerTestlibCmd</code> 再读流；对标准答案 expected 必须返回 <code>_ok</code>（否则自检失败）。</div>
+              <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> 必须先 <code>registerTestlibCmd</code> 再读流；标准答案必须返回 <code>_ok</code>，否则自检失败。</div>
+            </div>
 
-        <h2><i class="fa-solid fa-circle-8"></i> 两种模式对照总结</h2>
-        <table class="tut-table">
-          <tr><th></th><th>Python</th><th>C++ testlib</th></tr>
-          <tr><td><b>输入</b></td><td><code>check(input, output, expected)</code> 三个字符串参数</td><td>命令行参数：<code>checker 输入文件 输出文件 答案文件</code>，对应 <code>inf / ouf / ans</code> 流</td></tr>
-          <tr><td><b>判定</b></td><td><code>return True/False</code> 或 <code>(bool, msg, score)</code></td><td><code>quitf(_ok/_wa)</code>，退出码 0=AC / 非0=WA</td></tr>
-          <tr><td><b>部分得分</b></td><td>返回三元组第三项 0~1</td><td><code>quitp(points, ...)</code></td></tr>
-          <tr><td><b>适用</b></td><td>简单比对、误差、小规模校验</td><td>大数据、复杂格式校验、构造题（官方标准）</td></tr>
-          <tr><td><b>保存后</b></td><td>直接生效</td><td>自动编译 + 预编译缓存（首次编译，之后直接调 exe）</td></tr>
-        </table>
+            <div class="tut-h">两种模式对照</div>
+            <table class="tut-table">
+              <tr><th></th><th>Python</th><th>C++ testlib</th></tr>
+              <tr><td><b>传参</b></td><td><code>check(input, output, expected)</code> 三字符串</td><td><code>checker in out ans</code> 三文件（inf/ouf/ans 流）</td></tr>
+              <tr><td><b>判定</b></td><td><code>return True/False</code> 或 <code>(bool,msg,score)</code></td><td><code>quitf(_ok/_wa)</code>；退出码 0=AC 非0=WA</td></tr>
+              <tr><td><b>部分得分</b></td><td>三元组第三项 0~1</td><td><code>quitp(points)</code></td></tr>
+              <tr><td><b>适用</b></td><td>简单比对、误差、小规模</td><td>大数据、复杂格式、构造题</td></tr>
+            </table>
+          </div>
+
+          <!-- 数据包格式 -->
+          <div class="subpanel" id="pk-format">
+            <div class="tut-h">数据包结构</div>
+            <div class="codeblock">题目数据目录: /data/problems/P1000/
+├── 1.in / 1.out / 1.score    测试点（按编号）
+├── config.yaml               题目配置（可缺省，自动补全）
+├── checker.py 或 checker.cpp 特殊判题（可缺省）
+└── 2.in / 2.out ...</div>
+            <div class="tut-h">支持格式</div>
+            <ul>
+              <li>上传 <b>zip / tar.gz</b>，或填服务器路径 / URL 导入。</li>
+              <li>测试点命名 <code>1.in</code>、<code>01.in</code>、<code>test1.in</code> 均可。</li>
+            </ul>
+            <div class="tut-h">自动补全</div>
+            <ul>
+              <li><b>无 config.yaml</b>：自动扫描测试文件统计组数，生成默认配置（2s / 128MB / default 评分）。</li>
+              <li><b>checker 文件</b>：自动扫描 <code>checker.py</code> / <code>checker.cpp</code> 并落盘（都有时优先 Python）。</li>
+            </ul>
+            <div class="tut-h">导入方式</div>
+            <ol>
+              <li>编辑页「数据 + config.yaml」栏目 → 上传文件（标准上传）或填路径（路径导入）。</li>
+              <li>导入成功自动写入 config.yaml 并同步数据库。</li>
+            </ol>
+          </div>
+
+          <!-- config.yaml -->
+          <div class="subpanel" id="pk-config">
+            <div class="tut-h">config.yaml 字段</div>
+            <table class="tut-table">
+              <tr><th>字段</th><th>含义</th></tr>
+              <tr><td><code>name</code></td><td>题目名称（改题面标题自动同步）</td></tr>
+              <tr><td><code>time_limit</code></td><td>时间限制（秒）</td></tr>
+              <tr><td><code>memory_limit</code></td><td>内存限制（MB）</td></tr>
+              <tr><td><code>test_cases</code></td><td>测试点数量（按实际文件自动统计）</td></tr>
+              <tr><td><code>scoring_mode</code></td><td>评分模式（default = 默认平分）</td></tr>
+            </table>
+            <div class="tut-h">可视化配置</div>
+            <ul>
+              <li>编辑页「数据 + config.yaml」栏目表单直接改，保存后<b>同步文件与数据库</b>。</li>
+              <li>评测以 config.yaml 为准。</li>
+            </ul>
+            <div class="tut-h">双向同步</div>
+            <ul>
+              <li>保存题面 → name 自动更新。</li>
+              <li>导入数据 / AI 应用数据 → 自动写 config.yaml。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- AI 功能 -->
+        <div class="subpanel" id="tm-ai">
+          <div class="tut-h">打开 AI 助手</div>
+          <ol>
+            <li>编辑页「AI 功能」栏目 → 「打开 AI 助手」。</li>
+            <li>可选填 DeepSeek API Key 与题目正解 std → 「开始对话」。</li>
+          </ol>
+          <div class="tut-h">聊天生成数据</div>
+          <div class="codeblock">帮我生成 5 组测试数据，覆盖边界和随机数据
+第2组改成大边界输入
+加一个忽略行末空格的 checker</div>
+          <div class="tut-h">AI 的工作方式</div>
+          <ul>
+            <li>AI 拥有<b>工具</b>：写文件（gen.py / sol.py / checker.py）、运行生成器、自检 checker。</li>
+            <li>过程实时展示：AI 思考 → 工具调用卡片（可展开参数/结果）→ 完成；自检失败自动修复。</li>
+          </ul>
+          <div class="tut-h">应用数据与会话</div>
+          <ol>
+            <li>生成后点「<b>应用数据</b>」→ 写入题目数据目录并同步数据库。</li>
+            <li>对话与工具记录全部保存，<b>刷新自动恢复</b>，可多轮修改。</li>
+          </ol>
+        </div>
       </div>
     </section>
 
     <!-- ======== 8 群组与权限 ======== -->
-    <section class="tut-section" id="tut-10">
+    <section class="tut-section" id="tut-9">
       <div class="tut-card">
         <h1>群组与权限</h1>
         <div class="desc">通过用户组批量管理题目访问权限。</div>
@@ -370,7 +456,7 @@ int main(int argc, char* argv[]) {
     </section>
 
     <!-- ======== 9 FAQ ======== -->
-    <section class="tut-section" id="tut-10">
+    <section class="tut-section" id="tut-9">
       <div class="tut-card">
         <h1>常见问题（FAQ）</h1>
         <div class="desc">遇到问题先看这里。</div>
@@ -407,6 +493,18 @@ function showTut(t){
   document.querySelectorAll('.tut-section').forEach(s=>s.classList.toggle('active', s.id==='tut-'+t));
   window.scrollTo({top:0, behavior:'smooth'});
 }
+document.querySelectorAll('.subtab .st').forEach(st=>{
+  st.addEventListener('click', ()=>{
+    const g = st.closest('.subtab');
+    g.querySelectorAll('.st').forEach(x=>x.classList.remove('active'));
+    st.classList.add('active');
+    let el = g.nextElementSibling;
+    while(el && el.classList.contains('subpanel')){
+      el.classList.toggle('active', el.id === st.dataset.target);
+      el = el.nextElementSibling;
+    }
+  });
+});
 document.querySelectorAll('.tut-nav a').forEach(a=>{
   a.addEventListener('click', ()=>showTut(a.dataset.t));
 });
