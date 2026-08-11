@@ -52,6 +52,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg='config.yaml 已保存并同步。';
         $problem['time_limit']=$tl; $problem['memory_limit']=$ml;
     }
+    elseif ($action === 'save_checker' && !$isNew) {
+        // 前端 checker 编辑器：写 checker.py（Python）或 checker.cpp（testlib），切换类型时清理旧文件
+        $type = $_POST['checker_type'] ?? 'none';
+        $code = $_POST['checker_code'] ?? '';
+        $dataDir = "/data/problems/$pid";
+        @mkdir($dataDir, 0777, true);
+        if ($type === 'py') {
+            if (trim($code) === '') { $msg='Python checker 代码不能为空'; goto end; }
+            file_put_contents("$dataDir/checker.py", $code);
+            @unlink("$dataDir/checker.cpp");
+            $msg='checker.py 已保存（Python 模式）。';
+        } elseif ($type === 'cpp') {
+            if (trim($code) === '') { $msg='C++ checker 代码不能为空'; goto end; }
+            file_put_contents("$dataDir/checker.cpp", $code);
+            @unlink("$dataDir/checker.py");
+            $msg='checker.cpp 已保存（testlib 模式）。';
+        } else {
+            @unlink("$dataDir/checker.py"); @unlink("$dataDir/checker.cpp");
+            $msg='已移除 checker（标准比对）。';
+        }
+    }
     elseif ($action === 'grant_user' && !$isNew) {
         $user=trim($_POST['grant_username']??'');
         if($user){$pdo->prepare("INSERT IGNORE INTO problem_permissions (problem_id,username,granted_by) VALUES (?,?,?)")->execute([$pid,$user,currentUser()['username']]);$msg='已授权。';}
@@ -78,6 +99,8 @@ if(!$isNew){
     $inCount = is_dir($dataDir) ? count(glob("$dataDir/*.in")) : 0;
     $hasPyCk = file_exists("$dataDir/checker.py");
     $hasCppCk = file_exists("$dataDir/checker.cpp");
+    $pyCkCode = $hasPyCk ? file_get_contents("$dataDir/checker.py") : '';
+    $cppCkCode = $hasCppCk ? file_get_contents("$dataDir/checker.cpp") : '';
 }
 $pageTitle=($isNew?'新建':'编辑').'题目 - Zxt Super OJ';
 require __DIR__.'/inc/header.php';
@@ -165,15 +188,29 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
   <div class="full"><label>测试点数量 (test_cases)</label>
     <div style="font-size:13px;color:#5af;padding:8px 10px;background:#111;border:1px solid #222"><?=$inCount?> 组（由实际数据文件自动统计，保存时写入 config.yaml）</div>
   </div>
-  <div class="full"><label>checker（特殊判题）</label>
-    <div style="font-size:12px;color:#999;padding:8px 10px;background:#111;border:1px solid #222">
-      <?php if($hasPyCk):?><i class="fa-solid fa-circle-check" style="color:#2ecc71"></i> checker.py（Python check 函数）<?php else:?>—<?php endif?> &nbsp;&nbsp;
-      <?php if($hasCppCk):?><i class="fa-solid fa-circle-check" style="color:#2ecc71"></i> checker.cpp（testlib.h）<?php else:?>—<?php endif?>
-      &nbsp;（checker 文件随数据导入/AI 生成自动写入数据目录，此处仅展示状态）
-    </div>
+  <div class="full"><label>测试点数量 (test_cases)</label>
+    <div style="font-size:13px;color:#5af;padding:8px 10px;background:#111;border:1px solid #222"><?=$inCount?> 组（由实际数据文件自动统计，保存时写入 config.yaml）</div>
   </div>
 </div>
 <button class="btn" style="margin-top:8px"><i class="fa-solid fa-floppy-disk"></i> 保存 config.yaml</button>
+</form>
+</div>
+
+<div class="card"><h3><i class="fa-solid fa-clipboard-check"></i> checker 编辑器（特殊判题）</h3>
+<form method="POST"><input type="hidden" name="action" value="save_checker">
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+  <select name="checker_type" id="ckType" style="width:220px" onchange="switchCkType()">
+    <option value="none" <?=($hasPyCk||$hasCppCk)?'':'selected'?>>无 checker（标准比对）</option>
+    <option value="py" <?=$hasPyCk?'selected':''?>>Python（check 函数）</option>
+    <option value="cpp" <?=$hasCppCk?'selected':''?>>C++（testlib.h）</option>
+  </select>
+  <span id="ckStatus" style="font-size:12px;color:<?=($hasPyCk||$hasCppCk)?'#2ecc71':'#666'?>">
+    <?=($hasPyCk?'已配置 checker.py':($hasCppCk?'已配置 checker.cpp':'未配置'))?>
+  </span>
+</div>
+<textarea name="checker_code" id="ckCode" rows="12" style="font-family:monospace;font-size:12px" placeholder="选择类型后在此编写 checker 代码..."></textarea>
+<div style="font-size:11px;color:#666;margin:4px 0" id="ckHint"></div>
+<button class="btn" style="margin-top:8px"><i class="fa-solid fa-floppy-disk"></i> 保存 checker</button>
 </form>
 </div>
 
@@ -249,6 +286,31 @@ function showTab(name){
 function addSample(){const n=document.querySelectorAll('#samples>div').length;const d=document.createElement('div');d.style.cssText='background:#141414;border:1px solid #222;padding:12px;margin-bottom:8px';d.innerHTML='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><b style="font-size:12px">样例 #'+(n+1)+'</b><button class="btn-sm btn-danger" onclick="this.closest(\'div\').remove()">删除</button></div><div class="row"><div><label>输入</label><textarea name="s_input[]" rows="3"></textarea></div><div><label>输出</label><textarea name="s_output[]" rows="3"></textarea></div></div>';document.getElementById('samples').appendChild(d)}
 if(!document.querySelectorAll('#samples>div').length)addSample();
 function refreshData(){ window._dataLoaded=true; }
+const CK_PY = <?=json_encode($pyCkCode??'')?>;
+const CK_CPP = <?=json_encode($cppCkCode??'')?>;
+const CK_TMPL_PY = `def check(input, output, expected):
+    # input=测试输入 output=选手输出 expected=标准答案
+    # 返回 True/False，或 (是否通过:bool, 提示:str, 得分占比:float)
+    return output.strip() == expected.strip()`;
+const CK_TMPL_CPP = `#include "testlib.h"
+int main(int argc, char* argv[]) {
+    registerTestlibCmd(argc, argv);
+    // ans=标准答案 ouf=选手输出 inf=输入
+    std::string ja = ans.readString();
+    std::string pa = ouf.readString();
+    if (ja != pa) quitf(_wa, "expected '%s' found '%s'", ja.c_str(), pa.c_str());
+    quitf(_ok, "ok");
+}`;
+function switchCkType(){
+  const t = document.getElementById('ckType').value;
+  const code = document.getElementById('ckCode');
+  const hint = document.getElementById('ckHint');
+  const st = document.getElementById('ckStatus');
+  if(t === 'py'){ code.value = CK_PY || CK_TMPL_PY; hint.textContent='Python checker：定义 check(input, output, expected) 函数，返回 True/False 或 (bool, 提示, 分数占比)'; st.textContent = CK_PY ? '已配置 checker.py' : '（未保存，填写后保存生效）'; }
+  else if(t === 'cpp'){ code.value = CK_CPP || CK_TMPL_CPP; hint.textContent='C++ testlib checker：registerTestlibCmd 后比较 ans/ouf，quitf(_ok/_wa) 判定'; st.textContent = CK_CPP ? '已配置 checker.cpp' : '（未保存，填写后保存生效）'; }
+  else { code.value = ''; hint.textContent='标准比对：逐行比较选手输出与标准答案'; st.textContent = '未配置'; }
+}
+switchCkType();
 const dz=document.getElementById('dz'),pf=document.getElementById('pf'),fn=document.getElementById('fn');if(dz){dz.addEventListener('click',()=>pf.click());pf.addEventListener('change',()=>fn.textContent=pf.files[0]?.name||'未选择');}
 function uploadPackage(){
  const f=document.getElementById('pf').files[0];if(!f)return;
