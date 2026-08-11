@@ -64,7 +64,7 @@ try {
         @unlink(__DIR__.'/../'.$user['avatar']);
     }
 
-    $avatarUrl = 'uploads/avatars/'.$filename;
+    $avatarUrl = '/uploads/avatars/'.$filename;   // 绝对路径，/chat/ 子路径下也能加载
     $pdo->prepare("UPDATE users SET avatar=? WHERE id=?")->execute([$avatarUrl, $user['id']]);
 
     echo json_encode(['ok'=>true, 'avatar'=>$avatarUrl]);

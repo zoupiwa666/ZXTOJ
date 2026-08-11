@@ -27,7 +27,8 @@ function userAvatar($username, $avatar = null, $size = 20) {
         $avatar = $cache[$username];
     }
     if ($avatar) {
-        return '<img class="uavatar" src="'.htmlspecialchars($avatar).'" width="'.$size.'" height="'.$size.'" alt="">';
+        $av = ($avatar[0] === '/' ? '' : '/') . $avatar;   // /chat/ 子路径下相对头像会 404，统一绝对路径
+        return '<img class="uavatar" src="'.htmlspecialchars($av).'" width="'.$size.'" height="'.$size.'" alt="">';
     }
     return '<span class="uavatar uavatar-char" style="width:'.$size.'px;height:'.$size.'px;line-height:'.$size.'px;font-size:'.max(9, intval($size*0.5)).'px">'.htmlspecialchars(strtoupper(mb_substr($username,0,1))).'</span>';
 }
@@ -65,7 +66,7 @@ function userBadge($username, $avatar = null, $size = 20) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/jpeg" href="assets/favicon.jpg">
+<link rel="icon" type="image/jpeg" href="/assets/favicon.jpg">
 <title><?= $pageTitle ?? 'Zxt Super OJ' ?></title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -165,13 +166,13 @@ label{display:block;font-size:11px;color:#999;margin:8px 0 4px;text-transform:up
 input,textarea,select{border-radius:8px;transition:border-color .2s,box-shadow .2s,background .2s}
 input:focus,textarea:focus,select:focus{border-color:#5af;box-shadow:0 0 0 3px rgba(90,170,255,.12);background:#1f1f1f}
 </style>
-<link rel="stylesheet" href="assets/fa/all.min.css">
+<link rel="stylesheet" href="/assets/fa/all.min.css">
 <link rel="stylesheet" href="assets/highlight.css"><style>.hljs-ln-numbers{text-align:right;color:#444;border-right:1px solid #222;padding-right:7px;margin-right:7px;user-select:none;font-size:inherit!important;line-height:inherit!important}.hljs-ln td{padding:0!important;background:transparent!important}.hljs-ln tr:hover{background:#0f0f0f}.hljs-ln tr:hover td{background:transparent!important}.hljs[data-highlighted],.hljs [data-highlighted]{font-size:inherit!important;line-height:inherit!important;background:transparent!important}.hljs-ln-code{padding-left:0!important}code.hljs[data-highlighted]{display:contents!important;background:transparent!important;padding:0!important}.hljs,.hljs *,.hljs-ln,.hljs-ln *,.hljs-ln-line{font-family:Consolas,'Courier New',monospace!important;font-size:12px!important;line-height:1.5!important}
 .hljs-ln td,.hljs-ln th{padding:2px 0!important;border:none!important}
 .hljs-ln-numbers{-webkit-user-select:none;user-select:none}</style></head></head>
 <body>
 <div class="topbar">
-  <a class="title" href="/"><img src="assets/favicon.jpg" class="logo-icon" alt="logo">ZXT SUPER OJ<span>v1</span></a>
+  <a class="title" href="/"><img src="/assets/favicon.jpg" class="logo-icon" alt="logo">ZXT SUPER OJ<span>v1</span></a>
   <div class="btns">
     <?php if ($currentUser): ?>
       <span class="user" style="display:flex;align-items:center"><?= userBadge($currentUser["username"], $currentUser["avatar"] ?? null, 24) ?></span>

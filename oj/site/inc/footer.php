@@ -1,6 +1,6 @@
-<script src="assets/spark-md5.min.js"></script>
-<script src="assets/highlight.min.js"></script>
-<script src="assets/highlight-line-numbers.min.js"></script>
+<script src="/assets/spark-md5.min.js"></script>
+<script src="/assets/highlight.min.js"></script>
+<script src="/assets/highlight-line-numbers.min.js"></script>
 <script>
 // ===== 用户名片悬停卡片（头像+名字+格言，点击进主页）=====
 (function(){
@@ -23,7 +23,7 @@
         if(!d||!d.ok){ c.style.display='none'; return; }
         var ch=(d.username||'?')[0].toUpperCase();
         var av=d.avatar
-          ? '<img class="uc-avatar" src="'+esc(d.avatar)+'">'
+          ? '<img class="uc-avatar" src="'+(d.avatar && d.avatar[0]!=='/' ? '/' : '')+esc(d.avatar)+'">'
           : '<span class="uc-avatar" style="display:flex;align-items:center;justify-content:center;color:#5af;font-size:17px;font-weight:700">'+esc(ch)+'</span>';
         var role=d.role==='super_admin'?'<span class="uc-role">SA</span>':(d.role==='admin'?'<span class="uc-role">AD</span>':'');
         var color=(d.role==='super_admin'||d.role==='admin')?'#a855f7':'#b0815a';
