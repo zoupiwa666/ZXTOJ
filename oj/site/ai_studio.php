@@ -54,6 +54,12 @@ progress{flex:1;height:4px;accent-color:#5af;border:none;background:#222}
 .tool-call .tb-title{font-size:10px;color:#666;letter-spacing:1px;margin:6px 0 3px}
 .tool-call pre{margin:0;background:#0a0e14;border:1px solid #1c2733;padding:8px;font-size:11px;line-height:1.5;overflow-x:auto;color:#bdb;white-space:pre-wrap;word-break:break-all}
 .tool-call .tb-ok{color:#2ecc71}.tool-call .tb-err{color:#ff6b6b}.tool-call .tb-run{color:#ffab00;font-size:11px}
+.think-item{border:1px solid #2a2a3a;border-radius:6px;margin:4px 0;background:#12121c;overflow:hidden}
+.think-item summary{cursor:pointer;padding:6px 12px;font-size:12px;color:#8af;list-style:none;display:flex;gap:6px;align-items:center}
+.think-item summary:hover{background:#1a1a2a}
+.think-item summary::before{content:'▸';color:#5af}
+.think-item[open] summary::before{content:'▾'}
+.think-item .think-body{padding:8px 12px;border-top:1px solid #222;color:#9ab;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow-y:auto}
 </style>
 <div class="studio-wrap">
   <div class="studio-head">
@@ -109,28 +115,63 @@ const urlSid = <?=json_encode($sid)?>;
 let sessionId = urlSid || null, since = 0, pollTimer = null, generating = false;
 let curCfg = {count:10, need_checker:false, checker_req:'', extra_req:'', std_code:'', std_lang:'python3'};
 
+function autoScroll(){
+  const box = document.getElementById('chatBox');
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+  if(nearBottom) box.scrollTop = box.scrollHeight;
+}
+function finalizeThink(){
+  if(pendingThink){
+    const s = pendingThink.querySelector('summary');
+    if(s) s.textContent = '🧠 AI 思考（点击展开）';
+    if(pendingThink._raf){ cancelAnimationFrame(pendingThink._raf); pendingThink._raf = null; }
+    pendingThink = null; thinkRaf = false;
+  }
+}
 function addMsg(html, cls){ const d=document.createElement('div'); d.className='msg '+cls; d.innerHTML=html; document.getElementById('chatBox').appendChild(d); chatBox.scrollTop=chatBox.scrollHeight; return d; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function codeBlock(title, code){ return '<details class="code-block"><summary>'+title+'（点击展开 '+code.length+' 字符）</summary><pre></pre></details>'; }
 
 let curThink = null, roundNo = 0, pendingTool = null;
+let pendingThink = null, thinkRaf = false;
 function renderEvent(ev){
   const box = document.getElementById('chatBox');
   if(ev.type==='info'){ addMsg('🛠 ' + esc(ev.data), 'sys'); }
-  else if(ev.type==='user'){ roundNo++; curThink=null; addMsg(esc(ev.data), 'user'); }
+  else if(ev.type==='user'){ roundNo++; finalizeThink(); addMsg(esc(ev.data), 'user'); }
   else if(ev.type==='analysis_delta'){
-    if(!curThink || curThink._round !== roundNo){
-      curThink = addMsg('', 'ai'); curThink._round = roundNo;
-      const t=document.createElement('div'); t.className='ai-think'; t.textContent='🧠 AI 思考中：'; curThink.appendChild(t);
-      curThink._text=document.createElement('div'); curThink.appendChild(curThink._text);
+    // 思考条目：一段思考一个可折叠条，rAF 防抖累积，不强制滚动
+    if(!pendingThink){
+      const det = document.createElement('details');
+      det.className = 'think-item';
+      const sum = document.createElement('summary'); sum.textContent = '🧠 AI 思考中...';
+      det.appendChild(sum);
+      const body = document.createElement('div'); body.className='think-body';
+      det.appendChild(body);
+      const wrap = document.createElement('div'); wrap.className='msg ai'; wrap.style.padding='2px 4px';
+      wrap.appendChild(det);
+      document.getElementById('chatBox').appendChild(wrap);
+      pendingThink = {det, body, buf:''};
     }
-    curThink._text.textContent += ev.data; box.scrollTop=box.scrollHeight;
+    pendingThink.buf += ev.data;
+    if(!pendingThink._raf){
+      pendingThink._raf = requestAnimationFrame(()=>{
+        if(pendingThink){ pendingThink.body.textContent = pendingThink.buf; pendingThink._raf = null; autoScroll(); }
+      });
+    }
   }
-  else if(ev.type==='analysis_end'){ if(curThink) curThink.classList.add('ai'); curThink=null; }
-  else if(ev.type==='analysis_text'){
-    if(curThink && curThink._round === roundNo){ curThink.remove(); }
-    curThink = addMsg('<div class="ai-think">🧠 AI 思考</div><div></div>', 'ai');
-    curThink._round = roundNo; curThink.lastChild.textContent = ev.data;
+  else if(ev.type==='analysis_end' || ev.type==='analysis_text'){
+    finalizeThink();
+    if(ev.type==='analysis_text' && ev.data){
+      const det = document.createElement('details');
+      det.className = 'think-item';
+      const sum = document.createElement('summary'); sum.textContent = '🧠 AI 思考（点击展开）';
+      det.appendChild(sum);
+      const body = document.createElement('div'); body.className='think-body'; body.textContent = ev.data;
+      det.appendChild(body);
+      const wrap = document.createElement('div'); wrap.className='msg ai'; wrap.style.padding='2px 4px';
+      wrap.appendChild(det);
+      document.getElementById('chatBox').appendChild(wrap);
+    }
   }
   else if(ev.type==='analysis_text'){
     curThink = addMsg('<div class="ai-think">🧠 AI 思考</div><div></div>', 'ai');
@@ -150,6 +191,7 @@ function renderEvent(ev){
     }
   }
   else if(ev.type==='tool_delta'){
+    finalizeThink();
     // 工具参数流式：名称出现即建卡片（调用中...），参数增量实时追加
     const d = ev.data || {};
     if(!pendingTool || (d.name && pendingTool.name !== d.name)){
@@ -175,7 +217,7 @@ function renderEvent(ev){
     if(d.args_delta){
       pendingTool.argsText += d.args_delta;
       pendingTool.pre1.textContent = pendingTool.argsText;
-      box.scrollTop = box.scrollHeight;
+      autoScroll();
     }
   }
   else if(ev.type==='tool'){
@@ -204,16 +246,16 @@ function renderEvent(ev){
       wrap.appendChild(det);
       document.getElementById('chatBox').appendChild(wrap);
     }
-    box.scrollTop = box.scrollHeight;
+    autoScroll();
   }
   else if(ev.type==='progress'){
     let p = document.getElementById('progLine');
     if(!p){ p = document.createElement('div'); p.id='progLine'; p.className='progress-line'; p.innerHTML='<span>🏃 运行数据生成器</span><progress max="100" value="0"></progress><span class="pt"></span>'; box.appendChild(p); }
     p.querySelector('progress').value = Math.round(ev.data.i/ev.data.n*100);
     p.querySelector('.pt').textContent = ev.data.i + '/' + ev.data.n;
-    box.scrollTop = box.scrollHeight;
+    autoScroll();
   }
-  else if(ev.type==='done'){ curThink=null; pendingTool=null;
+  else if(ev.type==='done'){ finalizeThink(); pendingTool=null;
     const p = document.getElementById('progLine'); if(p) p.remove();
     addMsg('✅ ' + esc(ev.data.message), 'ai done-box');
     document.getElementById('btnApply').disabled = false;
@@ -222,7 +264,7 @@ function renderEvent(ev){
     generating = false;
     if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
   }
-  else if(ev.type==='error'){ curThink=null;
+  else if(ev.type==='error'){ finalizeThink();
     const p = document.getElementById('progLine'); if(p) p.remove();
     addMsg('❌ ' + esc(ev.data), 'err');
     generating = false;
