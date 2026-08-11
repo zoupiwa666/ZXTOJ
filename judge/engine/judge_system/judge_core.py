@@ -283,12 +283,22 @@ def main():
         if not cpp_cp.exists() and data_dir and os.path.isdir(data_dir):
             cpp_cp = Path(data_dir)/"checker.cpp"
         if cpp_cp.exists():
-            ck_exe = os.path.join(args.shared_dir, "checker_exe")
-            rc, o, e = run_proc(["g++", "-O2", "-o", ck_exe, str(cpp_cp), "-I", "/judge_system"], 60, args.workdir)
-            if rc != 0:
-                result["status"] = "failed"; result["system_error"] = "checker 编译失败:\n" + e[-500:]
-                (Path(args.output_dir)/"result.json").write_text(json.dumps(result, ensure_ascii=False)); return
-            ck = "TESTLIB"   # 标记 testlib 模式
+            # 预编译缓存：按 checker.cpp 源码 MD5 缓存 exe 到共享卷根（跨评测复用，避免每次编译）
+            import hashlib
+            md5 = hashlib.md5(cpp_cp.read_bytes()).hexdigest()[:16]
+            shared_root = os.path.dirname(args.shared_dir)   # /tmp/shared（跨任务共享）
+            cache_dir = os.path.join(shared_root, "checker_cache", md5)
+            os.makedirs(cache_dir, exist_ok=True)
+            ck_exe = os.path.join(cache_dir, "checker_exe")
+            if not os.path.exists(ck_exe):
+                tmp_exe = ck_exe + ".tmp"
+                rc, o, e = run_proc(["g++", "-O2", "-o", tmp_exe, str(cpp_cp), "-I", "/judge_system"], 60, args.workdir)
+                if rc != 0:
+                    result["status"] = "failed"; result["system_error"] = "checker 编译失败:\n" + e[-500:]
+                    (Path(args.output_dir)/"result.json").write_text(json.dumps(result, ensure_ascii=False)); return
+                try: os.replace(tmp_exe, ck_exe)   # 原子替换，防并发
+                except Exception: pass
+            ck = "TESTLIB"   # 标记 testlib 模式（ck_exe 为缓存路径）
         else:
             cp=Path(args.workdir)/"checker.py"
             if not cp.exists() and data_dir and os.path.isdir(data_dir):
