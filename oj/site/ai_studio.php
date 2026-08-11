@@ -59,6 +59,12 @@ require __DIR__.'/inc/header.php';
       <button class="btn btn-blue" onclick="startSession()" id="btnStart">🚀 开始对话</button>
       <span id="cfgMsg" style="font-size:12px;color:#999"></span>
     </div>
+    <div class="config-row" style="margin-top:8px">
+      <textarea id="cStd" rows="2" placeholder="题目正解 std（可选，供 AI 参考生成标准输出；留空则 AI 根据题面自己写）" style="flex:1;background:#000;border:1px solid #333;color:#ddd;padding:7px 10px;font-size:12px;font-family:inherit;outline:none"></textarea>
+      <select id="cLang" style="width:130px;background:#000;border:1px solid #333;color:#ddd;padding:7px;font-size:12px">
+        <option value="python3">Python3</option><option value="cpp17">C++17</option>
+      </select>
+    </div>
   </div>
 
   <div class="chat-box" id="chatBox"></div>
@@ -204,6 +210,8 @@ async function startSession(){
   const fd = new FormData();
   fd.append('problem_id', document.getElementById('cPid') ? document.getElementById('cPid').value.trim() : pid);
   fd.append('api_key', document.getElementById('cKey').value.trim());
+  fd.append('std_code', document.getElementById('cStd').value);
+  fd.append('std_lang', document.getElementById('cLang').value);
   for(let attempt=1; attempt<=3; attempt++){
     try{
       const ac = new AbortController();
