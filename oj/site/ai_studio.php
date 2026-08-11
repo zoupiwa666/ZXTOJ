@@ -439,13 +439,62 @@ function stdLooksLikeCode(v){
   if(!v.trim()) return true;                       // 空 = AI 生成，允许
   return /#\s*include|int\s+main|def\s+|import\s+|from\s+|using\s+namespace|return\s+0|std::|cin>>|cout<<|printf\(|scanf\(/.test(v);
 }
-// 通过 /chat/pid/sid 进入：恢复会话
+// 通过 /chat/pid/sid 进入：恢复会话（一次性加载全部历史，再增量轮询）
 if(urlSid){
   document.getElementById('cfgBox').style.display = 'none';
   document.getElementById('userMsg').disabled = false;
   document.getElementById('btnSend').disabled = false;
-  poll();
+  document.getElementById('btnParams').style.display = '';
+  loadHistory();
   addMsg('🔗 已恢复会话 ' + urlSid.slice(0,8) + '...，可继续对话修改', 'sys');
+}
+async function loadHistory(){
+  try{
+    const r = await fetch('/api/ai_studio_history.php?session_id='+sessionId);
+    const d = await r.json();
+    if(d.ok === false){ addMsg('⚠️ ' + (d.message||'会话已失效'), 'err'); return; }
+    if(d.events){
+      renderHistory(d.events);
+      since = d.next_since || 0;
+    }
+    poll();
+  }catch(e){ poll(); }
+}
+function renderHistory(evs){
+  // 批量渲染历史：analysis_delta 连续段合并为一个思考条目，tool_delta 跳过（tool 完成事件含完整信息）
+  const box = document.getElementById('chatBox');
+  const frag = document.createDocumentFragment();
+  let i = 0;
+  const mkThink = (buf) => {
+    const det = document.createElement('details');
+    det.className = 'think-item';
+    const sum = document.createElement('summary'); sum.textContent = '🧠 AI 思考（点击展开）';
+    det.appendChild(sum);
+    const body = document.createElement('div'); body.className='think-body'; body.textContent = buf;
+    det.appendChild(body);
+    const wrap = document.createElement('div'); wrap.className='msg ai'; wrap.style.padding='2px 4px';
+    wrap.appendChild(det);
+    frag.appendChild(wrap);
+  };
+  const mkMsg = (html, cls) => {
+    const d = document.createElement('div'); d.className = 'msg '+cls; d.innerHTML = html;
+    frag.appendChild(d);
+  };
+  while(i < evs.length){
+    const e = evs[i];
+    if(e.type === 'analysis_delta'){
+      let buf = e.data || '';
+      let j = i + 1;
+      while(j < evs.length && evs[j].type === 'analysis_delta'){ buf += evs[j].data || ''; j++; }
+      mkThink(buf); i = j;
+    } else if(e.type === 'tool_delta'){ i++; }
+    else if(e.type === 'user'){ mkMsg(esc(e.data), 'user'); i++; }
+    else if(e.type === 'info'){ mkMsg('🛠 ' + esc(e.data), 'sys'); i++; }
+    else if(e.type === 'error'){ mkMsg('❌ ' + esc(e.data), 'err'); i++; }
+    else { i++; }
+  }
+  box.appendChild(frag);
+  box.scrollTop = box.scrollHeight;
 }
 </script>
 <?php require __DIR__.'/inc/footer.php'; ?>

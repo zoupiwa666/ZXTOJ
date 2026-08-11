@@ -54,11 +54,16 @@ def _load_sessions():
     except Exception:
         pass
 
+_persist_len = {}
+
 def _persist_loop():
     while True:
-        time.sleep(3)
+        time.sleep(6)
         for sid in list(sessions):
-            _persist(sid)
+            n = len(events[sid])
+            if _persist_len.get(sid) != n:      # 事件有变化才写盘
+                _persist(sid)
+                _persist_len[sid] = n
 
 _load_sessions()
 threading.Thread(target=_persist_loop, daemon=True).start()
@@ -74,7 +79,7 @@ def push_event(sid, typ, data):
     events[sid].append({"seq": seq, "type": typ, "data": data})
     return seq
 
-def cleanup_old_sessions(max_age=86400):
+def cleanup_old_sessions(max_age=2592000):   # 30 天（会话长期保存，不中途失效）
     """清理超过 max_age 秒的会话文件"""
     now = time.time()
     for sid in list(sessions):
@@ -413,7 +418,7 @@ def do_generate(sid):
                 "content": f"你上次生成的代码有问题，请修复后重新输出完整 JSON：{last_err}"})
         try:
             prompt, user_std = build_prompt(sid, n)
-            messages = [{"role": "system", "content": "你是专业的 OJ 出题助手。工作方式：优先使用工具——write_file 编写 gen.py/sol.py/checker.py，run_generator 生成数据，test_checker 自检 checker（标准答案必须通过），失败则修改重试；每次调用工具前先用一两句话说明你的思考与意图（供用户实时查看）；仅当题目极其简单、无需迭代时才可直接输出 JSON；最终仍严格输出合法 JSON 对象。"}] \
+            messages = [{"role": "system", "content": "你是专业的 OJ 出题助手。你【必须】使用工具完成造数据，禁止直接输出代码跳过工具：write_file 编写 gen.py/sol.py/checker.py → run_generator 生成数据 → test_checker 自检（标准答案必须通过，失败则修改重试）；每次调用工具前先用一两句话说明你的思考与意图（供用户实时查看）；工具全部完成后，再输出最终 JSON（gen_code/sol_code/checker_code/config_yaml）。"}] \
                        + s["messages"] + [{"role": "user", "content": prompt}]
             gen = extract_json(chat_stream_tools(sid, messages))
             analysis = (gen.get("analysis") or "").strip()
@@ -693,3 +698,15 @@ async def chat_update(req: ChatUpdateReq):
     push_event(sid, "user", "⚙️ 参数已调整：" + "，".join(changed) + "，重新生成中...")
     threading.Thread(target=do_generate, args=(sid,), daemon=True).start()
     return {"ok": True, "session_id": sid, "changed": changed}
+
+@app.get("/chat/history")
+async def chat_history(session_id: str):
+    """一次性返回会话完整历史（供前端进入时批量渲染）"""
+    if session_id not in sessions:
+        raise HTTPException(404, "会话不存在或已过期")
+    evs = list(events[session_id])
+    return {"events": evs, "next_since": _event_seq[session_id], "session": {
+        "pid": sessions[session_id].get("pid", ""),
+        "count": sessions[session_id].get("count", 0),
+        "need_checker": sessions[session_id].get("need_checker", False),
+    }}
