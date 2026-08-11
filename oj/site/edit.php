@@ -27,6 +27,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("UPDATE problems SET title=?,background=?,description=?,input_format=?,output_format=?,hints=?,visibility=? WHERE problem_id=?")
                 ->execute([$title,$bg,$desc,$inf,$outf,$hint,$vis,$pid]);
         }
+        // 自动同步 config.yaml：name 跟随题面标题；数据存在则生成/更新（保留 tl/ml/评分等字段）
+        if (!$isNew) {
+            $dDir = "/data/problems/$pid";
+            if (is_dir($dDir) && count(glob("$dDir/*.in")) > 0) {
+                $cPath = "$dDir/config.yaml";
+                if (file_exists($cPath)) {
+                    $cfgOld = simpleYaml(file_get_contents($cPath));
+                    $cfgOld['name'] = $title;
+                    $out = "name: $title\n";
+                    foreach (['time_limit','memory_limit','test_cases','scoring_mode'] as $k) {
+                        if (isset($cfgOld[$k]) && $cfgOld[$k] !== null) $out .= "$k: {$cfgOld[$k]}\n";
+                    }
+                    file_put_contents($cPath, $out);
+                } else {
+                    $n = count(glob("$dDir/*.in"));
+                    file_put_contents($cPath, "name: $title\ntime_limit: {$problem['time_limit']}\nmemory_limit: {$problem['memory_limit']}\ntest_cases: $n\nscoring_mode: default\n");
+                }
+            }
+        }
         $msg='已保存。';
     }
     elseif ($action === 'save_samples' && !$isNew) {
