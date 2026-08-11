@@ -48,15 +48,15 @@ require __DIR__.'/inc/header.php';
 </style>
 <div class="studio-wrap">
   <div class="studio-head">
-    <h1>🤖 AI 助手 <?php if($pid): ?><span class="pid-tag"><?=htmlspecialchars($pid)?></span><?php endif; ?></h1>
+    <h1><i class="fa-solid fa-robot"></i> AI 助手 <?php if($pid): ?><span class="pid-tag"><?=htmlspecialchars($pid)?></span><?php endif; ?></h1>
     <a href="edit.php?id=<?=urlencode($pid)?>" style="font-size:12px;color:#999;text-decoration:none">← 返回题目编辑</a>
   </div>
 
   <div class="config-box" id="cfgBox">
-    <h3>🤖 AI 助手（聊天式：直接说话让我生成/修改测试数据，也可随意提问）</h3>
+    <h3><i class="fa-solid fa-robot"></i> AI 助手（聊天式：直接说话让我生成/修改测试数据，也可随意提问）</h3>
     <div class="config-row">
       <input id="cKey" type="password" placeholder="DeepSeek API Key（已保存可留空）" style="flex:1;min-width:220px">
-      <button class="btn btn-blue" onclick="startSession()" id="btnStart">🚀 开始对话</button>
+      <button class="btn btn-blue" onclick="startSession()" id="btnStart"><i class="fa-solid fa-rocket"></i> 开始对话</button>
       <span id="cfgMsg" style="font-size:12px;color:#999"></span>
     </div>
     <div class="config-row" style="margin-top:8px">
@@ -72,7 +72,7 @@ require __DIR__.'/inc/header.php';
   <div class="input-bar">
     <input id="userMsg" placeholder="和 AI 聊天，或说：帮我生成 5 组测试数据 / 加个忽略行末空格的 checker / 第2组改成大边界..." disabled>
     <button class="btn btn-blue" onclick="sendMsg()" id="btnSend" disabled>发送</button>
-    <button class="btn btn-green" onclick="applyData()" id="btnApply" disabled>✓ 应用数据</button>
+    <button class="btn btn-green" onclick="applyData()" id="btnApply" disabled><i class="fa-solid fa-floppy-disk"></i> 应用数据</button>
   </div>
 </div>
 
@@ -99,7 +99,7 @@ function finalizeReply(){
 
 function renderEvent(ev){
   const box = document.getElementById('chatBox');
-  if(ev.type==='info'){ addMsg('🛠 ' + esc(ev.data), 'sys'); }
+  if(ev.type==='info'){ addMsg('<i class="fa-solid fa-circle-info"></i> ' + esc(ev.data), 'sys'); }
   else if(ev.type==='user'){ finalizeReply(); addMsg(esc(ev.data), 'user'); }
   else if(ev.type==='reply_delta'){
     // AI 回复流式打字机
@@ -122,11 +122,11 @@ function renderEvent(ev){
     finalizeReply();
     const d = ev.data || {};
     if(!pendingTool || (d.name && pendingTool.name !== d.name)){
-      if(pendingTool && !pendingTool.finalized){ pendingTool.sum.innerHTML = '🛠 ' + pendingTool.name + ' <span class="tb-run">⏳ 调用中...</span>'; }
+      if(pendingTool && !pendingTool.finalized){ pendingTool.sum.innerHTML = '<i class="fa-solid fa-wrench"></i> ' + pendingTool.name + ' <span class="tb-run"><i class="fa-solid fa-hourglass-half"></i> 调用中...</span>'; }
       const det = document.createElement('details');
       det.className = 'tool-call'; det.open = true;
       const sum = document.createElement('summary');
-      sum.innerHTML = '🛠 ' + (d.name||'tool') + ' <span class="tb-run">⏳ 调用中...</span>';
+      sum.innerHTML = '<i class="fa-solid fa-wrench"></i> ' + (d.name||'tool') + ' <span class="tb-run"><i class="fa-solid fa-hourglass-half"></i> 调用中...</span>';
       det.appendChild(sum);
       const body = document.createElement('div'); body.className='tool-body';
       const a1 = document.createElement('div'); a1.className='tb-title'; a1.textContent='参数'; body.appendChild(a1);
@@ -144,16 +144,16 @@ function renderEvent(ev){
   else if(ev.type==='tool'){
     finalizeReply();
     const t = ev.data || {};
-    const st = t.status === 'err' ? '<span class="tb-err">⚠️ 失败</span>' : '<span class="tb-ok">✓</span>';
+    const st = t.status === 'err' ? '<span class="tb-err"><i class="fa-solid fa-triangle-exclamation"></i> 失败</span>' : '<span class="tb-ok"><i class="fa-solid fa-check"></i></span>';
     if(pendingTool && !pendingTool.finalized && pendingTool.name === t.name){
-      pendingTool.sum.innerHTML = '🛠 ' + t.name + ' ' + st;
+      pendingTool.sum.innerHTML = '<i class="fa-solid fa-wrench"></i> ' + t.name + ' ' + st;
       pendingTool.pre1.textContent = JSON.stringify(t.args||{}, null, 1);
       pendingTool.pre2.textContent = t.result || '';
       pendingTool.finalized = true;
     } else {
       const det = document.createElement('details');
       det.className = 'tool-call';
-      const sum = document.createElement('summary'); sum.innerHTML = '🛠 ' + (t.name||'tool') + ' ' + st;
+      const sum = document.createElement('summary'); sum.innerHTML = '<i class="fa-solid fa-wrench"></i> ' + (t.name||'tool') + ' ' + st;
       det.appendChild(sum);
       const body = document.createElement('div'); body.className='tool-body';
       const a1 = document.createElement('div'); a1.className='tb-title'; a1.textContent='参数'; body.appendChild(a1);
@@ -177,7 +177,7 @@ function renderEvent(ev){
   }
   else if(ev.type==='error'){
     finalizeReply();
-    addMsg('❌ ' + esc(ev.data), 'err');
+    addMsg('<i class="fa-solid fa-circle-xmark"></i> ' + esc(ev.data), 'err');
     generating = false;
     document.getElementById('userMsg').disabled = false;
     document.getElementById('btnSend').disabled = false;
@@ -193,7 +193,7 @@ function poll(){
       const d = await r.json();
       if(d.ok === false){
         if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
-        addMsg('⚠️ ' + (d.message || '会话已失效，请重新开始'), 'err');
+        addMsg('<i class="fa-solid fa-triangle-exclamation"></i> ' + (d.message || '会话已失效，请重新开始'), 'err');
         document.getElementById('cfgBox').style.display = '';
         document.getElementById('btnStart').disabled = false;
         return;
@@ -254,13 +254,13 @@ async function sendMsg(){
     const r = await fetch('/api/ai_studio_message.php', {method:'POST', body:fd});
     const d = await r.json();
     if(!d.ok){
-      addMsg('❌ ' + (d.message||'发送失败'), 'err');
+      addMsg('<i class="fa-solid fa-circle-xmark"></i> ' + (d.message||'发送失败'), 'err');
       generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false;
       if(d.message && d.message.indexOf('过期') !== -1){ document.getElementById('cfgBox').style.display=''; document.getElementById('btnStart').disabled=false; }
       return;
     }
     poll();
-  }catch(e){ addMsg('❌ 发送失败', 'err'); generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false; }
+  }catch(e){ addMsg('<i class="fa-solid fa-circle-xmark"></i> 发送失败', 'err'); generating=false; document.getElementById('btnSend').disabled=false; document.getElementById('userMsg').disabled=false; }
 }
 
 async function applyData(){
@@ -270,8 +270,8 @@ async function applyData(){
   try{
     const r = await fetch('/api/ai_studio_apply.php', {method:'POST', body:fd});
     const d = await r.json();
-    addMsg(d.ok ? '💾 ' + d.message : '❌ ' + (d.message||'应用失败'), d.ok ? 'ai done-box' : 'err');
-  }catch(e){ addMsg('❌ 应用失败', 'err'); }
+    addMsg(d.ok ? '<i class="fa-solid fa-floppy-disk"></i> ' + d.message : '<i class="fa-solid fa-circle-xmark"></i> ' + (d.message||'应用失败'), d.ok ? 'ai done-box' : 'err');
+  }catch(e){ addMsg('<i class="fa-solid fa-circle-xmark"></i> 应用失败', 'err'); }
 }
 
 document.getElementById('userMsg').addEventListener('keydown', e => { if(e.key==='Enter') sendMsg(); });
@@ -282,13 +282,13 @@ if(urlSid){
   document.getElementById('userMsg').disabled = false;
   document.getElementById('btnSend').disabled = false;
   loadHistory();
-  addMsg('🔗 已恢复会话，可继续对话', 'sys');
+  addMsg('<i class="fa-solid fa-link"></i> 已恢复会话，可继续对话', 'sys');
 }
 async function loadHistory(){
   try{
     const r = await fetch('/api/ai_studio_history.php?session_id='+sessionId);
     const d = await r.json();
-    if(d.ok === false){ addMsg('⚠️ ' + (d.message||'会话已失效'), 'err'); return; }
+    if(d.ok === false){ addMsg('<i class="fa-solid fa-triangle-exclamation"></i> ' + (d.message||'会话已失效'), 'err'); return; }
     if(d.events){
       renderHistory(d.events);
       since = d.next_since || 0;
@@ -309,11 +309,11 @@ function renderHistory(evs){
       mk(esc(buf), 'ai'); i = j;
     } else if(e.type === 'reply'){ mk(esc(e.data||''), 'ai'); i++; }
     else if(e.type === 'user'){ mk(esc(e.data), 'user'); i++; }
-    else if(e.type === 'info'){ mk('🛠 ' + esc(e.data), 'sys'); i++; }
+    else if(e.type === 'info'){ mk('<i class="fa-solid fa-circle-info"></i> ' + esc(e.data), 'sys'); i++; }
     else if(e.type === 'tool_delta'){ i++; }
     else if(e.type === 'tool'){
       const t=e.data||{};
-      mk('<details class="tool-call"><summary>🛠 ' + esc(t.name||'tool') + (t.status==='err'?' ⚠️':' ✓') + '</summary><div class="tool-body"><div class="tb-title">参数</div><pre>' + esc(JSON.stringify(t.args||{},null,1)) + '</pre><div class="tb-title">结果</div><pre>' + esc(t.result||'') + '</pre></div></details>', 'ai');
+      mk('<details class="tool-call"><summary><i class="fa-solid fa-wrench"></i> ' + esc(t.name||'tool') + (t.status==='err'?' <i class="fa-solid fa-triangle-exclamation"></i>':' <i class="fa-solid fa-check"></i>') + '</summary><div class="tool-body"><div class="tb-title">参数</div><pre>' + esc(JSON.stringify(t.args||{},null,1)) + '</pre><div class="tb-title">结果</div><pre>' + esc(t.result||'') + '</pre></div></details>', 'ai');
       i++;
     }
     else { i++; }

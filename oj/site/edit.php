@@ -111,16 +111,16 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <?php if($msg):?><div class="msg"><?=$msg?></div><?php endif?>
 
 <div class="tabs">
-  <div class="tab active" data-tab="statement" onclick="showTab('statement')">📝 题面配置</div>
-  <div class="tab" data-tab="data" onclick="showTab('data')">🗄 数据 + config.yaml</div>
-  <div class="tab" data-tab="perm" onclick="showTab('perm')">🔐 权限配置</div>
-  <div class="tab" data-tab="ai" onclick="showTab('ai')">🤖 AI 功能</div>
+  <div class="tab active" data-tab="statement" onclick="showTab('statement')"><i class="fa-solid fa-file-lines"></i> 题面配置</div>
+  <div class="tab" data-tab="data" onclick="showTab('data')"><i class="fa-solid fa-database"></i> 数据 + config.yaml</div>
+  <div class="tab" data-tab="perm" onclick="showTab('perm')"><i class="fa-solid fa-lock"></i> 权限配置</div>
+  <div class="tab" data-tab="ai" onclick="showTab('ai')"><i class="fa-solid fa-robot"></i> AI 功能</div>
 </div>
 
 <!-- ========== Tab1 题面 ========== -->
 <div id="tab-statement" class="tab-panel active">
 <form method="POST"><input type="hidden" name="action" value="save_problem">
-<div class="card"><h3>题目信息</h3>
+<div class="card"><h3><i class="fa-solid fa-circle-info"></i> 题目信息</h3>
 <?php if($isNew):?><label>题目编号</label><input name="problem_id" placeholder="例如: P1000" required><?php endif?>
 <label>标题</label><input name="title" value="<?=htmlspecialchars($problem['title']??'')?>" required>
 <div class="row">
@@ -135,7 +135,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 
 <?php if(!$isNew):?>
 <form method="POST"><input type="hidden" name="action" value="save_samples">
-<div class="card"><h3>样例</h3>
+<div class="card"><h3><i class="fa-solid fa-list-ol"></i> 样例</h3>
 <div id="samples">
 <?php foreach($samples as $i=>$s):?>
 <div style="background:#141414;border:1px solid #222;padding:12px;margin-bottom:8px">
@@ -167,17 +167,17 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
   </div>
   <div class="full"><label>checker（特殊判题）</label>
     <div style="font-size:12px;color:#999;padding:8px 10px;background:#111;border:1px solid #222">
-      <?php if($hasPyCk):?>✅ checker.py（Python check 函数）<?php else:?>—<?php endif?> &nbsp;&nbsp;
-      <?php if($hasCppCk):?>✅ checker.cpp（testlib.h）<?php else:?>—<?php endif?>
+      <?php if($hasPyCk):?><i class="fa-solid fa-circle-check" style="color:#2ecc71"></i> checker.py（Python check 函数）<?php else:?>—<?php endif?> &nbsp;&nbsp;
+      <?php if($hasCppCk):?><i class="fa-solid fa-circle-check" style="color:#2ecc71"></i> checker.cpp（testlib.h）<?php else:?>—<?php endif?>
       &nbsp;（checker 文件随数据导入/AI 生成自动写入数据目录，此处仅展示状态）
     </div>
   </div>
 </div>
-<button class="btn" style="margin-top:8px">💾 保存 config.yaml</button>
+<button class="btn" style="margin-top:8px"><i class="fa-solid fa-floppy-disk"></i> 保存 config.yaml</button>
 </form>
 </div>
 
-<div class="card"><h3>导入数据包（已有 <span id="tcCount"><?=$tcCount?></span> 个测试点 / 目录 <?=$inCount?> 组文件）</h3>
+<div class="card"><h3><i class="fa-solid fa-file-import"></i> 导入数据包（已有 <span id="tcCount"><?=$tcCount?></span> 个测试点 / 目录 <?=$inCount?> 组文件）</h3>
 <label class="file-zone" id="dz"><div style="font-size:20px">+</div><div style="font-size:12px">拖拽或点击上传 .zip / .tar.gz</div><div style="font-size:11px;color:#999" id="fn">未选择</div><input type="file" name="package" accept=".zip,.tar.gz,.tgz,.tar" id="pf"></label>
 <button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button> <button class="btn" style="margin-top:12px;background:#1a3a5c;color:#5af" onclick="directUpload()" id="directBtn">直传</button>
 <div style="margin-top:12px;display:flex;gap:8px">
@@ -190,7 +190,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <div id="importStatus" style="margin-top:4px;font-size:12px;color:#999"></div>
 </div>
 
-<div class="card"><h3>数据文件概览</h3>
+<div class="card"><h3><i class="fa-solid fa-folder-open"></i> 数据文件概览</h3>
 <?php if($inCount>0):?>
 <div class="kv"><span>目录</span><b><?=htmlspecialchars($dataDir)?></b></div>
 <div class="kv"><span>测试点</span><b><?=$inCount?> 组（1.in ~ <?=$inCount?>.in）</b></div>
@@ -206,7 +206,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <?php if($isNew):?><div class="card"><h3>提示</h3><div style="font-size:12px;color:#999">请先保存题目。</div></div>
 <?php else:?>
 <form method="POST"><input type="hidden" name="action" value="grant_user">
-<div class="card"><h3>访问权限</h3>
+<div class="card"><h3><i class="fa-solid fa-key"></i> 访问权限</h3>
 <div style="display:flex;gap:8px;margin-bottom:12px"><input name="grant_username" placeholder="用户名 或 team->组名" style="flex:1"><button class="btn btn-sm">授权</button></div>
 <?php $perms=$pdo->prepare("SELECT * FROM problem_permissions WHERE problem_id=?");$perms->execute([$pid]);$plist=$perms->fetchAll();if($plist):?>
 <table style="width:100%;font-size:11px;color:#888">
@@ -224,18 +224,18 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <div id="tab-ai" class="tab-panel">
 <?php if($isNew):?><div class="card"><h3>提示</h3><div style="font-size:12px;color:#999">请先保存题目。</div></div>
 <?php else:?>
-<div class="card"><h3>AI 助手（聊天式造数据）</h3>
+<div class="card"><h3><i class="fa-solid fa-robot"></i> AI 助手（聊天式造数据）</h3>
 <div style="font-size:12px;color:#999;margin-bottom:12px">像聊天一样让 AI 生成/修改测试数据：AI 掌握文件读写与专用工具（生成器/标准解法/checker 自检），可自由对话。</div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-  <a class="btn" style="background:#1a3a5c;color:#5af;text-decoration:none" href="ai_studio.php?pid=<?=urlencode($pid)?>">💬 打开 AI 助手</a>
+  <a class="btn" style="background:#1a3a5c;color:#5af;text-decoration:none" href="ai_studio.php?pid=<?=urlencode($pid)?>"><i class="fa-solid fa-comments"></i> 打开 AI 助手</a>
   <a class="btn" style="background:#2a1a4c;color:#a9f;text-decoration:none" href="ai_studio.php?pid=<?=urlencode($pid)?>">（会话 URL 恢复，可多轮修改）</a>
 </div>
 </div>
-<div class="card"><h3>数据与 config 快速状态</h3>
+<div class="card"><h3><i class="fa-solid fa-gauge-high"></i> 数据与 config 快速状态</h3>
 <div class="kv"><span>测试点</span><b><?=$inCount?> 组</b></div>
 <div class="kv"><span>时间限制</span><b><?=$cfg['time_limit']?>s</b></div>
 <div class="kv"><span>内存限制</span><b><?=$cfg['memory_limit']?>MB</b></div>
-<div class="kv"><span>checker</span><b><?=($hasPyCk||$hasCppCk)?'✅ 已配置（'.($hasCppCk?'checker.cpp':'checker.py').'）':'未配置'?></b></div>
+<div class="kv"><span>checker</span><b><?=($hasPyCk||$hasCppCk)?'<i class="fa-solid fa-circle-check" style="color:#2ecc71"></i> 已配置（'.($hasCppCk?'checker.cpp':'checker.py').'）':'未配置'?></b></div>
 </div>
 <?php endif?>
 </div>
