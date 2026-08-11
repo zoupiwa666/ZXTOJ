@@ -47,8 +47,9 @@ require __DIR__.'/inc/header.php';
     <a data-t="5"><i class="fa-solid fa-file-arrow-down"></i> 我的文件</a>
     <a data-t="6"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 造数据</a>
     <a data-t="7"><i class="fa-solid fa-user-gear"></i> 题目管理</a>
-    <a data-t="8"><i class="fa-solid fa-users"></i> 群组与权限</a>
-    <a data-t="9"><i class="fa-solid fa-circle-question"></i> 常见问题</a>
+    <a data-t="8"><i class="fa-solid fa-clipboard-check"></i> checker 编写</a>
+    <a data-t="9"><i class="fa-solid fa-users"></i> 群组与权限</a>
+    <a data-t="10"><i class="fa-solid fa-circle-question"></i> 常见问题</a>
   </nav>
 
   <div class="tut-content">
@@ -233,8 +234,125 @@ require __DIR__.'/inc/header.php';
       </div>
     </section>
 
-    <!-- ======== 8 群组与权限 ======== -->
+    <!-- ======== 8 checker 编写 ======== -->
     <section class="tut-section" id="tut-8">
+      <div class="tut-card">
+        <h1>checker 编写（特殊判题 SPJ）</h1>
+        <div class="desc">当题目答案不唯一、需要浮点误差判断或验证构造合法性时，用 checker 代替标准比对。</div>
+
+        <h2><i class="fa-solid fa-circle-1"></i> 评测端如何调用（传参方式）</h2>
+        <p style="font-size:12px;color:#bbb;line-height:1.8">OJ 支持两种 checker，评测时按数据目录文件自动识别：</p>
+        <table class="tut-table">
+          <tr><th>模式</th><th>文件</th><th>评测端调用方式</th></tr>
+          <tr><td><b>Python</b></td><td><code>checker.py</code></td><td>加载代码后直接调用函数<br><code>check(input, output, expected)</code>，三个参数均为<b>字符串</b></td></tr>
+          <tr><td><b>C++ testlib</b></td><td><code>checker.cpp</code></td><td>自动编译为可执行文件，运行：<br><code>checker 输入文件 选手输出文件 标准答案文件</code></td></tr>
+        </table>
+        <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> 两种文件都存在时<b>优先 Python 模式</b>（checker.py）。</div>
+
+        <h2><i class="fa-solid fa-circle-2"></i> Python checker 写法</h2>
+        <p style="font-size:12px;color:#bbb;line-height:1.8">在题目「checker 编辑器」选 Python，定义函数（评测端会 <code>exec</code> 你的代码后调用）：</p>
+        <div class="codeblock">def check(input, output, expected):
+    # input   : 该测试点的输入内容（字符串）
+    # output  : 选手程序的输出内容（字符串）
+    # expected: 标准答案 .out 内容（字符串）
+    # 返回 True / False，或 (是否通过:bool, 提示:str, 得分占比:float)
+    return output.strip() == expected.strip()</div>
+        <h2><i class="fa-solid fa-circle-3"></i> Python 常见写法示例</h2>
+        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>忽略行末空格与末尾空行</b>：</p>
+        <div class="codeblock">def check(input, output, expected):
+    def norm(s):
+        return '\n'.join(line.rstrip() for line in s.strip().splitlines())
+    return norm(output) == norm(expected)</div>
+        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>浮点误差 1e-6</b>：</p>
+        <div class="codeblock">def check(input, output, expected):
+    a = float(output.strip())
+    b = float(expected.strip())
+    if abs(a - b) <= 1e-6:
+        return True, 'OK', 1.0
+    return False, f'expected {b}, got {a}', 0.0</div>
+        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>构造题校验（利用 input 判断合法性）</b>：</p>
+        <div class="codeblock">def check(input, output, expected):
+    # 例：要求输出 1..n 的一个排列
+    nums = list(map(int, output.split()))
+    n = int(input.split()[0])
+    if sorted(nums) == list(range(1, n + 1)):
+        return True, 'valid permutation', 1.0
+    return False, 'not a permutation', 0.0</div>
+        <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> 注意：checker 里<b>不要读文件、不要 print</b>；标准答案（expected）必须返回 True。</div>
+
+        <h2><i class="fa-solid fa-circle-4"></i> C++ testlib checker 写法</h2>
+        <p style="font-size:12px;color:#bbb;line-height:1.8">在「checker 编辑器」选 C++，使用官方 <code>testlib.h</code>（评测端自动编译 + 预编译缓存）：</p>
+        <div class="codeblock">#include "testlib.h"
+int main(int argc, char* argv[]) {
+    // 必须第一行调用：注册三个流
+    // argv[1] = 输入文件   -> inf
+    // argv[2] = 选手输出文件 -> ouf
+    // argv[3] = 标准答案文件 -> ans
+    registerTestlibCmd(argc, argv);
+
+    // 读取并比较
+    int ja = ans.readInt();   // 标准答案
+    int pa = ouf.readInt();   // 选手输出
+    if (ja != pa)
+        quitf(_wa, "expected %d, found %d", ja, pa);
+    quitf(_ok, "OK");
+}</div>
+        <h2><i class="fa-solid fa-circle-5"></i> testlib 常用读取函数</h2>
+        <table class="tut-table">
+          <tr><th>函数</th><th>含义</th><th>典型用法</th></tr>
+          <tr><td><code>readInt()</code></td><td>读一个整数</td><td><code>ans.readInt(); ouf.readInt();</code></td></tr>
+          <tr><td><code>readLong()</code></td><td>读一个 64 位整数</td><td><code>ouf.readLong()</code></td></tr>
+          <tr><td><code>readDouble()</code></td><td>读一个浮点数</td><td><code>ans.readDouble()</code></td></tr>
+          <tr><td><code>readString()</code></td><td>读一整行字符串</td><td><code>ouf.readString()</code></td></tr>
+          <tr><td><code>readToken()</code></td><td>读一个不含空格的词</td><td><code>ouf.readToken()</code></td></tr>
+          <tr><td><code>readWord()</code></td><td>同上（别名）</td><td><code>ans.readWord()</code></td></tr>
+          <tr><td><code>readEoln() / readEof()</code></td><td>读换行 / 读到末尾</td><td>验证输出格式完整性</td></tr>
+        </table>
+        <h2><i class="fa-solid fa-circle-6"></i> testlib 判定函数</h2>
+        <table class="tut-table">
+          <tr><th>函数</th><th>结果</th><th>退出码</th></tr>
+          <tr><td><code>quitf(_ok, "msg", ...)</code></td><td class="v-ac">AC 通过</td><td>0</td></tr>
+          <tr><td><code>quitf(_wa, "msg", ...)</code></td><td class="v-wa">WA 答案错误</td><td>1</td></tr>
+          <tr><td><code>quitf(_pe, "msg", ...)</code></td><td>PE 格式错误（按 WA 处理）</td><td>2</td></tr>
+          <tr><td><code>quitp(_points, "msg", ...)</code></td><td>部分得分（0-1）</td><td>0</td></tr>
+        </table>
+        <h2><i class="fa-solid fa-circle-7"></i> testlib 常见写法示例</h2>
+        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>浮点误差 1e-6</b>：</p>
+        <div class="codeblock">#include "testlib.h"
+int main(int argc, char* argv[]) {
+    registerTestlibCmd(argc, argv);
+    double ja = ans.readDouble();
+    double pa = ouf.readDouble();
+    if (doubleCompare(pa, ja) > 1e-6)
+        quitf(_wa, "expected %.6f, found %.6f", ja, pa);
+    quitf(_ok, "OK");
+}</div>
+        <p style="font-size:12px;color:#bbb;line-height:1.8"><b>读输入辅助判断（inf 流）</b>：</p>
+        <div class="codeblock">#include "testlib.h"
+int main(int argc, char* argv[]) {
+    registerTestlibCmd(argc, argv);
+    int n = inf.readInt();              // 从输入文件读 n
+    std::string ja = ans.readString();  // 标准答案
+    std::string pa = ouf.readString();  // 选手输出
+    if (ja != pa) quitf(_wa, "mismatch");
+    quitf(_ok, "n=%d ok", n);
+}</div>
+        <div class="warn"><i class="fa-solid fa-triangle-exclamation"></i> 必须先用 <code>registerTestlibCmd</code> 再读流；对标准答案 expected 必须返回 <code>_ok</code>（否则自检失败）。</div>
+
+        <h2><i class="fa-solid fa-circle-8"></i> 两种模式对照总结</h2>
+        <table class="tut-table">
+          <tr><th></th><th>Python</th><th>C++ testlib</th></tr>
+          <tr><td><b>输入</b></td><td><code>check(input, output, expected)</code> 三个字符串参数</td><td>命令行参数：<code>checker 输入文件 输出文件 答案文件</code>，对应 <code>inf / ouf / ans</code> 流</td></tr>
+          <tr><td><b>判定</b></td><td><code>return True/False</code> 或 <code>(bool, msg, score)</code></td><td><code>quitf(_ok/_wa)</code>，退出码 0=AC / 非0=WA</td></tr>
+          <tr><td><b>部分得分</b></td><td>返回三元组第三项 0~1</td><td><code>quitp(points, ...)</code></td></tr>
+          <tr><td><b>适用</b></td><td>简单比对、误差、小规模校验</td><td>大数据、复杂格式校验、构造题（官方标准）</td></tr>
+          <tr><td><b>保存后</b></td><td>直接生效</td><td>自动编译 + 预编译缓存（首次编译，之后直接调 exe）</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======== 8 群组与权限 ======== -->
+    <section class="tut-section" id="tut-10">
       <div class="tut-card">
         <h1>群组与权限</h1>
         <div class="desc">通过用户组批量管理题目访问权限。</div>
@@ -252,7 +370,7 @@ require __DIR__.'/inc/header.php';
     </section>
 
     <!-- ======== 9 FAQ ======== -->
-    <section class="tut-section" id="tut-9">
+    <section class="tut-section" id="tut-10">
       <div class="tut-card">
         <h1>常见问题（FAQ）</h1>
         <div class="desc">遇到问题先看这里。</div>
