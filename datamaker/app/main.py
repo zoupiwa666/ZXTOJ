@@ -173,10 +173,31 @@ def exec_tool(sid, name, args):
                 ok += 1
             return f"生成完成：{ok}/{count} 组" + (("；" + "; ".join(msgs[:3])) if msgs else "")
         if name == "test_checker":
-            if not os.path.exists(os.path.join(ws, "checker.py")):
-                return "错误：没有 checker.py（先用 write_file 写入）"
+            ck_py = os.path.join(ws, "checker.py")
+            ck_cpp = os.path.join(ws, "checker.cpp")
+            if os.path.exists(ck_cpp):
+                # testlib checker（C++）：编译后逐个运行 checker in out ans
+                exe = os.path.join(ws, "checker_exe")
+                rc, o, e = run(["g++", "-O2", "-o", exe, ck_cpp, "-I", "/app"], 60, ws)
+                if rc != 0:
+                    return "checker.cpp 编译失败：\n" + hint_compile_err(e[-400:])
+                files = sorted(f for f in os.listdir(ws) if re.fullmatch(r"\d+\.in", f))
+                if not files:
+                    return "错误：没有数据（先 run_generator）"
+                fails = []
+                for f in files:
+                    idx = int(f[:-3])
+                    rc, o, e = run([exe, os.path.join(ws, f),
+                                    os.path.join(ws, f"{idx}.out"), os.path.join(ws, f"{idx}.out")], 10, ws)
+                    if rc != 0:
+                        fails.append(f"第{idx}组")
+                if fails:
+                    return f"checker 自检失败（标准答案未通过）：{', '.join(fails)}"
+                return f"checker 自检通过：{len(files)} 组标准答案全部通过"
+            if not os.path.exists(ck_py):
+                return "错误：没有 checker.py/checker.cpp（先用 write_file 写入）"
             ns = {}
-            exec(open(os.path.join(ws, "checker.py"), encoding="utf-8").read(), ns)
+            exec(open(ck_py, encoding="utf-8").read(), ns)
             ck = ns.get("check")
             if not callable(ck):
                 return "错误：checker 缺少 check(input, output, expected) 函数"
@@ -204,7 +225,7 @@ def exec_tool(sid, name, args):
 
 TOOLS = [
     {"type": "function", "function": {"name": "write_file",
-        "description": "在工作目录写文件（编写/修改 gen.py、sol.py、sol.cpp、checker.py 等）。路径必须是相对文件名。",
+        "description": "在工作目录写文件（编写/修改 gen.py、sol.py、sol.cpp、checker.py、checker.cpp 等；checker.cpp 可用 testlib.h 编写，编译时自动包含）。路径必须是相对文件名。",
         "parameters": {"type": "object", "properties": {"path": {"type": "string", "description": "相对文件名，如 gen.py"}, "content": {"type": "string"}}, "required": ["path", "content"]}}},
     {"type": "function", "function": {"name": "read_file",
         "description": "读取工作目录文件内容（限 4000 字符）。",
@@ -216,7 +237,7 @@ TOOLS = [
         "description": "运行工作目录 gen.py 生成 count 组数据（用 sol.py 或 sol.cpp 产出 .out）。这是唯一能执行代码的方式。",
         "parameters": {"type": "object", "properties": {"count": {"type": "integer", "description": "数据组数"}}, "required": ["count"]}}},
     {"type": "function", "function": {"name": "test_checker",
-        "description": "用已生成的数据对 checker.py 做自检（标准答案必须全部通过）。这是唯一能测试 checker 的方式。",
+        "description": "用已生成的数据对 checker（checker.py 的 check 函数，或 checker.cpp 的 testlib 程序）做自检（标准答案必须全部通过）。这是唯一能测试 checker 的方式。",
         "parameters": {"type": "object", "properties": {}}}},
 ]
 

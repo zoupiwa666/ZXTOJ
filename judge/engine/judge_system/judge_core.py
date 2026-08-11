@@ -33,6 +33,17 @@ ICTIME = "/usr/local/bin/ictime"   # 确定性计时包装器（enable_on_exec�
 ICTIME_EXISTS = os.path.exists(ICTIME)
 import uuid as _uuid
 
+def run_proc(cmd, timeout, cwd, stdin_data=None):
+    """subprocess.run 封装，返回 (rc, stdout, stderr)"""
+    try:
+        p = subprocess.run(cmd, input=stdin_data.encode() if stdin_data is not None else None,
+                           capture_output=True, timeout=timeout, cwd=cwd)
+        return p.returncode, p.stdout.decode(errors="replace"), p.stderr.decode(errors="replace")
+    except subprocess.TimeoutExpired:
+        return -1, "", "timeout"
+    except Exception as e:
+        return -2, "", str(e)
+
 def run_case_sync(lang, workdir, shared_dir, inp, tl, ml, input_file=None):
     if input_file and os.path.exists(input_file):
         inp = open(input_file, 'r', encoding='utf-8', errors='replace').read()
@@ -158,7 +169,7 @@ def run_checker(checker_code, inp, out, exp, max_score=1.0):
     except Exception as e: return False,f"checker 异常:{e}",0.0
 
 def process_one_case(args_tuple):
-    i, c, lang, workdir, shared_dir, tl, ml, ol, ck, output_dir = args_tuple
+    i, c, lang, workdir, shared_dir, tl, ml, ol, ck, output_dir, ck_exe = args_tuple
     inp=c.get("input",""); exp=c.get("expected_output","")
     ct=c.get("time_limit",tl); cm=c.get("memory_limit",ml); max_score=c.get("score",1.0)
 
@@ -177,7 +188,23 @@ def process_one_case(args_tuple):
 
     passed=False; score=0.0
     if verdict==V_AC:
-        passed,cmsg,score=run_checker(ck, inp, output, exp, max_score)
+        if ck == "TESTLIB" and ck_exe is not None:
+            # testlib checker：写临时文件（in/out/ans）后运行 checker in out ans
+            try:
+                ck_in = os.path.join(shared_dir, f"ck_{i}_in.txt")
+                ck_out = os.path.join(shared_dir, f"ck_{i}_out.txt")
+                ck_ans = os.path.join(shared_dir, f"ck_{i}_ans.txt")
+                open(ck_in, "w", encoding="utf-8").write(inp)
+                open(ck_out, "w", encoding="utf-8").write(output)
+                open(ck_ans, "w", encoding="utf-8").write(exp)
+                rc, o, e = run_proc([ck_exe, ck_in, ck_out, ck_ans], 10, shared_dir)
+                passed = (rc == 0)
+                cmsg = (o or e).strip()[-200:]
+                score = max_score if passed else 0.0
+            except Exception as ex:
+                passed = False; cmsg = f"checker 运行异常:{ex}"; score = 0.0
+        else:
+            passed,cmsg,score=run_checker(ck, inp, output, exp, max_score)
         if not passed: verdict=V_WA
         if cmsg and not passed: err_msg=cmsg
 
@@ -250,10 +277,23 @@ def main():
                 i += 1
         else:
             cases=json.loads((Path(args.workdir)/"test_cases.json").read_text())
-        cp=Path(args.workdir)/"checker.py"
-        if not cp.exists() and data_dir and os.path.isdir(data_dir):
-            cp=Path(data_dir)/"checker.py"   # data_dir 模式下 checker 在题目数据目录
-        ck=cp.read_text(encoding="utf-8", errors="replace") if cp.exists() else None
+        # checker：优先 testlib C++（checker.cpp 编译运行），否则 Python（checker.py check 函数）
+        ck = None; ck_exe = None
+        cpp_cp = Path(args.workdir)/"checker.cpp"
+        if not cpp_cp.exists() and data_dir and os.path.isdir(data_dir):
+            cpp_cp = Path(data_dir)/"checker.cpp"
+        if cpp_cp.exists():
+            ck_exe = os.path.join(args.shared_dir, "checker_exe")
+            rc, o, e = run_proc(["g++", "-O2", "-o", ck_exe, str(cpp_cp), "-I", "/judge_system"], 60, args.workdir)
+            if rc != 0:
+                result["status"] = "failed"; result["system_error"] = "checker 编译失败:\n" + e[-500:]
+                (Path(args.output_dir)/"result.json").write_text(json.dumps(result, ensure_ascii=False)); return
+            ck = "TESTLIB"   # 标记 testlib 模式
+        else:
+            cp=Path(args.workdir)/"checker.py"
+            if not cp.exists() and data_dir and os.path.isdir(data_dir):
+                cp=Path(data_dir)/"checker.py"
+            ck=cp.read_text(encoding="utf-8", errors="replace") if cp.exists() else None
 
         if lang in ("c","cpp14","cpp17","cpp20"):
             emit_status("compiling", "编译中...")
@@ -264,7 +304,7 @@ def main():
                 (Path(args.output_dir)/"result.json").write_text(json.dumps(result,ensure_ascii=False)); return
         emit_status("running", "评测中...")
 
-        tasks=[(i,c,lang,args.workdir,args.shared_dir,tl,ml,ol,ck,args.output_dir) 
+        tasks=[(i,c,lang,args.workdir,args.shared_dir,tl,ml,ol,ck,args.output_dir,ck_exe)
                for i,c in enumerate(cases)]
         all_r=[None]*len(cases)
 
