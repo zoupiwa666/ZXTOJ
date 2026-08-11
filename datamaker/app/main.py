@@ -341,42 +341,61 @@ def hint_compile_err(e: str) -> str:
         return "链接错误（collect2），常见原因：缺 main / 缺符号，请检查代码完整性"
     return e
 
-def chat_with_tools(sid, messages):
-    """带 function calling 的 DeepSeek 多轮；AI 可读写工作目录文件、调用专用工具运行；返回最终 content"""
+def chat_stream_tools(sid, messages):
+    """流式工具模式：AI 文本/工具参数增量实时推送，工具执行结果即时返回；返回最终 content"""
     s = sessions[sid]
     for _ in range(20):
         body = json.dumps({"model": "deepseek-chat", "messages": messages, "temperature": 0.6,
-                           "stream": False, "tools": TOOLS,
-                           "response_format": {"type": "json_object"}}).encode()
+                           "stream": True, "tools": TOOLS}).encode()
         req = urllib.request.Request(DEEPSEEK_URL, data=body, headers={
             "Content-Type": "application/json", "Authorization": "Bearer " + s["api_key"]})
+        content = ""
+        tool_calls = {}
         with urllib.request.urlopen(req, timeout=300) as r:
-            data = json.loads(r.read())
-        msg = ((data.get("choices") or [{}])[0].get("message") or {})
-        tcs = msg.get("tool_calls")
-        if tcs:
-            # 输出 AI 在本轮工具前的思考/说明文本（非流式一次性推给前端）
-            ai_txt = (msg.get("content") or "").strip()
-            if ai_txt:
-                push_event(sid, "analysis_delta", clean_analysis(ai_txt))
-                push_event(sid, "analysis_delta", "\n")
-            messages.append({"role": "assistant", "content": ai_txt, "tool_calls": tcs})
-            for tc in tcs:
+            for raw in r:
+                line = raw.decode(errors="replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                d = line[5:].strip()
+                if d == "[DONE]":
+                    break
                 try:
-                    args = json.loads(tc.get("function", {}).get("arguments") or "{}")
+                    chunk = json.loads(d)
                 except Exception:
-                    args = {}
-                name = tc.get("function", {}).get("name", "")
-                result = exec_tool(sid, name, args)
+                    continue
+                delta = ((chunk.get("choices") or [{}])[0].get("delta") or {})
+                if delta.get("content"):
+                    content += delta["content"]
+                    push_event(sid, "analysis_delta", clean_analysis(delta["content"]))
+                for tc in delta.get("tool_calls") or []:
+                    idx_t = tc.get("index", 0)
+                    t = tool_calls.setdefault(idx_t, {"id": "", "name": "", "args": ""})
+                    fn = tc.get("function") or {}
+                    if tc.get("id"):
+                        t["id"] = tc["id"]
+                    if fn.get("name"):
+                        t["name"] += fn["name"]
+                        push_event(sid, "tool_delta", {"name": t["name"], "args_delta": ""})
+                    if fn.get("arguments"):
+                        t["args"] += fn["arguments"]   # 参数不流式推送（长参数流式会卡死），执行完随 tool 事件一并显示
+        if tool_calls:
+            tcs = [{"id": t["id"], "type": "function",
+                    "function": {"name": t["name"], "arguments": t["args"]}}
+                   for _, t in sorted(tool_calls.items())]
+            messages.append({"role": "assistant", "content": content or None, "tool_calls": tcs})
+            for t in tcs:
+                try:
+                    args = json.loads(t["function"]["arguments"] or "{}")
+                except Exception:
+                    args = {"_raw": t["function"]["arguments"]}
+                result = exec_tool(sid, t["function"]["name"], args)
                 status = "ok" if not str(result).startswith(("错误", "异常", "没有", "未知")) else "err"
-                # 独立工具事件（持久化，前端折叠卡片展示参数与结果）
-                push_event(sid, "tool", {"name": name, "args": args,
+                push_event(sid, "tool", {"name": t["function"]["name"], "args": args,
                                          "result": str(result)[:400], "status": status})
-                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": result})
+                messages.append({"role": "tool", "tool_call_id": t["id"], "content": result})
             continue
-        return msg.get("content", "")
+        return content
     raise RuntimeError("AI 工具调用次数过多（超过 20 次）")
-
 class _SkipRun(Exception):
     """标记：数据已由 AI 工具在工作目录生成，跳过本地运行直接落盘"""
 
@@ -394,9 +413,9 @@ def do_generate(sid):
                 "content": f"你上次生成的代码有问题，请修复后重新输出完整 JSON：{last_err}"})
         try:
             prompt, user_std = build_prompt(sid, n)
-            messages = [{"role": "system", "content": "你是专业的 OJ 出题助手。可用 write_file/read_file/list_files/run_generator/test_checker 工具（写代码、生成数据、自检 checker）；每次调用工具前先用一两句话说明你的思考与意图（供用户查看进度）；最终仍严格输出合法 JSON 对象。"}] \
+            messages = [{"role": "system", "content": "你是专业的 OJ 出题助手。工作方式：优先使用工具——write_file 编写 gen.py/sol.py/checker.py，run_generator 生成数据，test_checker 自检 checker（标准答案必须通过），失败则修改重试；每次调用工具前先用一两句话说明你的思考与意图（供用户实时查看）；仅当题目极其简单、无需迭代时才可直接输出 JSON；最终仍严格输出合法 JSON 对象。"}] \
                        + s["messages"] + [{"role": "user", "content": prompt}]
-            gen = extract_json(chat_with_tools(sid, messages))
+            gen = extract_json(chat_stream_tools(sid, messages))
             analysis = (gen.get("analysis") or "").strip()
             if analysis:
                 push_event(sid, "analysis_text", clean_analysis(analysis))

@@ -53,7 +53,7 @@ progress{flex:1;height:4px;accent-color:#5af;border:none;background:#222}
 .tool-call .tool-body{padding:8px 12px;border-top:1px solid #222}
 .tool-call .tb-title{font-size:10px;color:#666;letter-spacing:1px;margin:6px 0 3px}
 .tool-call pre{margin:0;background:#0a0e14;border:1px solid #1c2733;padding:8px;font-size:11px;line-height:1.5;overflow-x:auto;color:#bdb;white-space:pre-wrap;word-break:break-all}
-.tool-call .tb-ok{color:#2ecc71}.tool-call .tb-err{color:#ff6b6b}
+.tool-call .tb-ok{color:#2ecc71}.tool-call .tb-err{color:#ff6b6b}.tool-call .tb-run{color:#ffab00;font-size:11px}
 </style>
 <div class="studio-wrap">
   <div class="studio-head">
@@ -113,7 +113,7 @@ function addMsg(html, cls){ const d=document.createElement('div'); d.className='
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function codeBlock(title, code){ return '<details class="code-block"><summary>'+title+'（点击展开 '+code.length+' 字符）</summary><pre></pre></details>'; }
 
-let curThink = null, roundNo = 0;
+let curThink = null, roundNo = 0, pendingTool = null;
 function renderEvent(ev){
   const box = document.getElementById('chatBox');
   if(ev.type==='info'){ addMsg('🛠 ' + esc(ev.data), 'sys'); }
@@ -149,23 +149,61 @@ function renderEvent(ev){
       wrap.appendChild(d);
     }
   }
+  else if(ev.type==='tool_delta'){
+    // 工具参数流式：名称出现即建卡片（调用中...），参数增量实时追加
+    const d = ev.data || {};
+    if(!pendingTool || (d.name && pendingTool.name !== d.name)){
+      if(pendingTool && !pendingTool.finalized){
+        pendingTool.sum.innerHTML = '🛠 ' + pendingTool.name + ' <span class="tb-run">⏳ 调用中...</span>';
+      }
+      const det = document.createElement('details');
+      det.className = 'tool-call'; det.open = true;
+      const sum = document.createElement('summary');
+      sum.innerHTML = '🛠 ' + (d.name||'tool') + ' <span class="tb-run">⏳ 调用中...</span>';
+      det.appendChild(sum);
+      const body = document.createElement('div'); body.className='tool-body';
+      const a1 = document.createElement('div'); a1.className='tb-title'; a1.textContent='参数（实时）'; body.appendChild(a1);
+      const pre1 = document.createElement('pre'); pre1.textContent = ''; body.appendChild(pre1);
+      const a2 = document.createElement('div'); a2.className='tb-title'; a2.textContent='结果'; body.appendChild(a2);
+      const pre2 = document.createElement('pre'); pre2.textContent = ''; body.appendChild(pre2);
+      det.appendChild(body);
+      const wrap = document.createElement('div'); wrap.className='msg ai'; wrap.style.padding='4px 6px';
+      wrap.appendChild(det);
+      document.getElementById('chatBox').appendChild(wrap);
+      pendingTool = {name: d.name||'tool', argsText:'', det, sum, pre1, pre2, finalized:false};
+    }
+    if(d.args_delta){
+      pendingTool.argsText += d.args_delta;
+      pendingTool.pre1.textContent = pendingTool.argsText;
+      box.scrollTop = box.scrollHeight;
+    }
+  }
   else if(ev.type==='tool'){
+    // 工具执行完成：更新卡片（完整参数 + 结果 + 状态）
     const t = ev.data || {};
-    const det = document.createElement('details');
-    det.className = 'tool-call';
-    const sum = document.createElement('summary');
     const st = t.status === 'err' ? '<span class="tb-err">⚠️ 失败</span>' : '<span class="tb-ok">✓</span>';
-    sum.innerHTML = '🛠 ' + (t.name||'tool') + ' ' + st;
-    det.appendChild(sum);
-    const body = document.createElement('div'); body.className='tool-body';
-    const a1 = document.createElement('div'); a1.className='tb-title'; a1.textContent='参数'; body.appendChild(a1);
-    const pre1 = document.createElement('pre'); pre1.textContent = JSON.stringify(t.args||{}, null, 1); body.appendChild(pre1);
-    const a2 = document.createElement('div'); a2.className='tb-title'; a2.textContent='结果'; body.appendChild(a2);
-    const pre2 = document.createElement('pre'); pre2.textContent = t.result || ''; body.appendChild(pre2);
-    det.appendChild(body);
-    const wrap = document.createElement('div'); wrap.className='msg ai'; wrap.style.padding='4px 6px';
-    wrap.appendChild(det);
-    document.getElementById('chatBox').appendChild(wrap);
+    if(pendingTool && !pendingTool.finalized && pendingTool.name === t.name){
+      pendingTool.sum.innerHTML = '🛠 ' + t.name + ' ' + st;
+      pendingTool.pre1.textContent = JSON.stringify(t.args||{}, null, 1);
+      pendingTool.pre2.textContent = t.result || '';
+      pendingTool.finalized = true;
+    } else {
+      // 无流式前缀（如刷新重放）：直接建完成卡片
+      const det = document.createElement('details');
+      det.className = 'tool-call';
+      const sum = document.createElement('summary');
+      sum.innerHTML = '🛠 ' + (t.name||'tool') + ' ' + st;
+      det.appendChild(sum);
+      const body = document.createElement('div'); body.className='tool-body';
+      const a1 = document.createElement('div'); a1.className='tb-title'; a1.textContent='参数'; body.appendChild(a1);
+      const pre1 = document.createElement('pre'); pre1.textContent = JSON.stringify(t.args||{}, null, 1); body.appendChild(pre1);
+      const a2 = document.createElement('div'); a2.className='tb-title'; a2.textContent='结果'; body.appendChild(a2);
+      const pre2 = document.createElement('pre'); pre2.textContent = t.result || ''; body.appendChild(pre2);
+      det.appendChild(body);
+      const wrap = document.createElement('div'); wrap.className='msg ai'; wrap.style.padding='4px 6px';
+      wrap.appendChild(det);
+      document.getElementById('chatBox').appendChild(wrap);
+    }
     box.scrollTop = box.scrollHeight;
   }
   else if(ev.type==='progress'){
@@ -175,7 +213,7 @@ function renderEvent(ev){
     p.querySelector('.pt').textContent = ev.data.i + '/' + ev.data.n;
     box.scrollTop = box.scrollHeight;
   }
-  else if(ev.type==='done'){ curThink=null;
+  else if(ev.type==='done'){ curThink=null; pendingTool=null;
     const p = document.getElementById('progLine'); if(p) p.remove();
     addMsg('✅ ' + esc(ev.data.message), 'ai done-box');
     document.getElementById('btnApply').disabled = false;
