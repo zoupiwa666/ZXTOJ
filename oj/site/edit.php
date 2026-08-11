@@ -235,7 +235,7 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 
 <div class="card"><h3><i class="fa-solid fa-file-import"></i> 导入数据包（已有 <span id="tcCount"><?=$tcCount?></span> 个测试点 / 目录 <?=$inCount?> 组文件）</h3>
 <label class="file-zone" id="dz"><div style="font-size:20px">+</div><div style="font-size:12px">拖拽或点击上传 .zip / .tar.gz</div><div style="font-size:11px;color:#999" id="fn">未选择</div><input type="file" name="package" accept=".zip,.tar.gz,.tgz,.tar" id="pf"></label>
-<button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button> <button class="btn" style="margin-top:12px;background:#1a3a5c;color:#5af" onclick="directUpload()" id="directBtn">直传</button>
+<button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button>
 <div style="margin-top:12px;display:flex;gap:8px">
   <input id="serverPath" placeholder="服务器路径或下载链接: /tmp/a.zip 或 https://...zip" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')importServerPath()">
   <button class="btn btn-sm" onclick="importServerPath()">路径导入</button>
@@ -362,53 +362,6 @@ async function importServerPath(){
   if(d.ok){st.innerHTML='<span style="color:#0c0">'+d.message+'</span> 3秒后刷新...';setTimeout(()=>location.reload(),3000);}
   else{st.innerHTML='<span style="color:#c00">'+d.message+'</span>';}
  }catch(e){st.innerHTML='<span style="color:#c00">失败</span>';}
-}
-const CHUNK_SIZE=5*1024*1024, MAX_CONCURRENT=3, UPLOAD_URL='http://156.239.236.66:1227';
-async function directUpload(){
- const f=document.getElementById("pf").files[0];if(!f)return;
- const b=document.getElementById("directBtn");b.disabled=true;b.textContent="准备...";
- const st=document.getElementById("importStatus"),pb=document.getElementById("progressBar"),pt=document.getElementById("progressText");
- st.innerHTML="";pb.style.display="block";pt.style.display="block";pb.max=f.size;
- const md5=await calcMD5(f).catch(e=>{st.innerHTML='<span style="color:#c00">MD5失败</span>';b.disabled=false;b.textContent='直传';throw e}); if(!md5)return;
- b.textContent="检查...";
- const ck=await fetch(UPLOAD_URL+'/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5,name:f.name})});
- const cj=await ck.json();
- if(cj.instant){pb.value=f.size;pt.textContent="秒传!";st.innerHTML='<span style="color:#0c0">秒传成功</span>';document.getElementById("serverPath").value=cj.path;importServerPath();b.disabled=false;b.textContent="直传";return}
- const exist=new Set(cj.exist.map(x=>parseInt(x)));
- const total=Math.ceil(f.size/CHUNK_SIZE);
- let uploaded=exist.size*CHUNK_SIZE;
- pb.value=uploaded;pt.textContent=Math.round(uploaded/f.size*100)+"%";
- const tasks=[];
- for(let i=0;i<total;i++){if(!exist.has(i))tasks.push(i)}
- let done=0;
- async function uploadChunk(i){
-  const start=i*CHUNK_SIZE,end=Math.min(start+CHUNK_SIZE,f.size);
-  const blob=f.slice(start,end);
-  const fd=new FormData();fd.append('file',blob);fd.append('md5',md5);fd.append('index',i);
-  for(let retry=0;retry<3;retry++){
-   try{
-    const r=await fetch(UPLOAD_URL+'/chunk',{method:'POST',body:fd});
-    if(r.ok){done++;uploaded+=blob.size;pb.value=uploaded;pt.textContent=Math.round(uploaded/f.size*100)+"% "+done+"/"+total;return}
-   }catch(e){await new Promise(r=>setTimeout(r,1000*Math.pow(2,retry)))}
-  }
-  throw new Error("chunk "+i+" failed")
- }
- b.textContent="上传中...";
- await Promise.all(tasks.slice(0,MAX_CONCURRENT).map(i=>uploadChunk(i)));
- const mr=await fetch(UPLOAD_URL+'/merge',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md5,name:f.name,total})});
- const mj=await mr.json();
- if(mj.path){document.getElementById("serverPath").value=mj.path;st.innerHTML='<span style="color:#0c0">完成</span>';importServerPath()}
- else{st.innerHTML='<span style="color:#c00">合并失败</span>'}
- b.disabled=false;b.textContent="直传";
-}
-async function calcMD5(file){
- return new Promise(resolve=>{
-  const chunks=Math.ceil(file.size/2097152),spark=new SparkMD5.ArrayBuffer;
-  let idx=0;const reader=new FileReader;
-  reader.onload=e=>{spark.append(e.target.result);idx++;if(idx<chunks)loadNext();else resolve(spark.end())};
-  function loadNext(){reader.readAsArrayBuffer(file.slice(idx*2097152,(idx+1)*2097152))}
-  loadNext()
- })
 }
 </script>
 <?php require __DIR__.'/inc/footer.php'; ?>
