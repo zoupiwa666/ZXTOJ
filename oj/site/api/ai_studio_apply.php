@@ -37,7 +37,7 @@ if ($sid !== '') {
 $dir = "/data/problems/$pid";
 $n = 0;
 if (is_dir($dir)) foreach (glob("$dir/*.in") as $f) $n = max($n, intval(basename($f, '.in')));
-if ($n === 0) { echo json_encode(['ok'=>false,'message'=>'没有测试数据，请先让 AI 生成（可让它调用 run_generator 生成数据后再应用）']); exit; }
+if ($n === 0) { echo json_encode(['ok'=>false,'message'=>'没有测试数据。若已让 AI 生成数据，请按 Ctrl+F5 刷新页面后重新点击「应用数据」；或先让 AI 调用 run_generator 生成']); exit; }
 $pdo->prepare("DELETE FROM problem_testcases WHERE problem_id=?")->execute([$pid]);
 $scoreEach = round(100 / $n, 2);
 $stmt = $pdo->prepare("INSERT INTO problem_testcases (problem_id,sort_order,input_text,output_text,score,file_path) VALUES (?,?,?,?,?,?)");
