@@ -51,7 +51,7 @@ if (isset($info['memory_limit'])) $pdo->prepare("UPDATE problems SET memory_limi
 $cfgTl = floatval($info['time_limit'] ?? 2.0);
 $cfgMl = intval($info['memory_limit'] ?? 128);
 $cfgName = preg_replace('/[\r\n:]+/', ' ', $info['name'] ?? $pid);
-file_put_contents("$dir/config.yaml", "name: $cfgName\ntime_limit: $cfgTl\nmemory_limit: $cfgMl\ntest_cases: ".($i-1)."\n");
+file_put_contents("$dir/config.yaml", "name: $cfgName\ntime_limit: $cfgTl\nmemory_limit: $cfgMl\ntest_cases: ".($i-1)."\nscoring_mode: ".($info['scoring_mode'] ?? 'default')."\n");
 
 echo json_encode(['ok'=>true, 'message'=>"导入成功！".($i-1)."个测试点，数据已写入 /data/problems/$pid/"]);
 if (isset($tmp) && file_exists($tmp)) @unlink($tmp);
