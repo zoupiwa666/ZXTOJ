@@ -26,6 +26,21 @@ try {
 } catch (PDOException \$e) {
     die('数据库连接失败');
 }
+
+// ===== OJCID 长效登录凭证（一周有效）=====
+if (!isset(\$_SESSION['user_id']) && isset(\$_COOKIE['OJCID'])) {
+    \$__cid = preg_replace('/[^a-f0-9]/', '', \$_COOKIE['OJCID']);
+    if (strlen(\$__cid) === 48) {
+        try {
+            \$__s = \$pdo->prepare("SELECT id FROM users WHERE ojcid=? AND ojcid_expire > NOW()");
+            \$__s->execute([\$__cid]);
+            if (\$__u = \$__s->fetch()) {
+                \$_SESSION['user_id'] = \$__u['id'];
+                setcookie('OJCID', \$__cid, time() + 7 * 86400, '/', '', false, true);
+            }
+        } catch (Exception \$e) {}
+    }
+}
 PHP;
 
 file_put_contents('/var/www/oj/inc/config.php', $config);

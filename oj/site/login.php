@@ -2,7 +2,17 @@
 if($_SERVER['REQUEST_METHOD']==='POST'){
  $u=trim($_POST['username']??'');$p=$_POST['password']??'';
  $s=$pdo->prepare("SELECT * FROM users WHERE username=?");$s->execute([$u]);$user=$s->fetch();
- if($user&&password_verify($p,$user['password_hash'])){$_SESSION['user_id']=$user['id'];
+ if($user&&password_verify($p,$user['password_hash'])){
+  $_SESSION['user_id']=$user['id'];
+  // OJCID 长效登录凭证：已有有效 CID 复用并续期，否则生成新的
+  if (!empty($user['ojcid']) && $user['ojcid_expire'] && strtotime($user['ojcid_expire']) > time()) {
+      $cid = $user['ojcid'];
+      $pdo->prepare("UPDATE users SET ojcid_expire=DATE_ADD(NOW(), INTERVAL 7 DAY) WHERE id=?")->execute([$user['id']]);
+  } else {
+      $cid = bin2hex(random_bytes(24));
+      $pdo->prepare("UPDATE users SET ojcid=?, ojcid_expire=DATE_ADD(NOW(), INTERVAL 7 DAY) WHERE id=?")->execute([$cid, $user['id']]);
+  }
+  setcookie('OJCID', $cid, time() + 7 * 86400, '/', '', false, true);
   $redir = $_GET['redirect'] ?? '';
   if ($redir !== '' && strpos($redir, 'login.php') === false && strpos($redir, 'register.php') === false) header('Location: '.$redir);
   else header('Location: /');

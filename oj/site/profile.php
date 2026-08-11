@@ -17,6 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         else {
             $hash = password_hash($newpw, PASSWORD_BCRYPT);
             $pdo->prepare("UPDATE users SET password_hash=? WHERE id=?")->execute([$hash, $user['id']]);
+            // 改密码后 OJCID 重新生成（旧凭证失效）
+            $ncid = bin2hex(random_bytes(24));
+            $pdo->prepare("UPDATE users SET ojcid=?, ojcid_expire=DATE_ADD(NOW(), INTERVAL 7 DAY) WHERE id=?")->execute([$ncid, $user['id']]);
+            setcookie('OJCID', $ncid, time() + 7 * 86400, '/', '', false, true);
             $msg = '密码已修改。';
         }
     }
