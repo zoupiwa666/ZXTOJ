@@ -266,6 +266,7 @@ async function sendMsg(){
 async function applyData(){
   const fd = new FormData();
   fd.append('problem_id', pid || sessionId);
+  fd.append('session_id', sessionId || '');
   try{
     const r = await fetch('/api/ai_studio_apply.php', {method:'POST', body:fd});
     const d = await r.json();

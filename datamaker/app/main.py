@@ -89,8 +89,10 @@ def push_event(sid, typ, data):
     return seq
 
 # ---------- 工具 ----------
+WS_ROOT = os.environ.get("WS_ROOT", "/data/ai_ws")   # 共享卷，容器重建不丢
+
 def session_ws(sid):
-    ws = f"/tmp/dm_ws/{sid}"
+    ws = os.path.join(WS_ROOT, sid)
     os.makedirs(ws, exist_ok=True)
     return ws
 
@@ -383,3 +385,32 @@ async def chat_history(session_id: str):
     return {"events": evs, "next_since": _event_seq[session_id], "session": {
         "pid": sessions[session_id].get("pid", ""),
     }}
+
+@app.post("/chat/apply")
+async def chat_apply(session_id: str):
+    """把会话工作目录生成的测试数据落盘到 /data/problems/{pid}（用户点'应用数据'时调用）"""
+    if session_id not in sessions:
+        raise HTTPException(404, "会话不存在或已过期")
+    s = sessions[session_id]
+    ws = session_ws(session_id)
+    files = [f for f in os.listdir(ws) if re.fullmatch(r"\d+\.in", f)]
+    if not files:
+        raise HTTPException(400, "工作目录没有测试数据，请先让 AI 生成")
+    pid = s["pid"]
+    out_dir = os.path.join(DATA_ROOT, pid)
+    os.makedirs(out_dir, exist_ok=True)
+    for f in os.listdir(out_dir):
+        if re.fullmatch(r"\d+\.(in|out|score)", f):
+            os.remove(os.path.join(out_dir, f))
+    from shutil import copyfile as _cp
+    cnt = 0
+    for f in os.listdir(ws):
+        if re.fullmatch(r"\d+\.(in|out|score)", f):
+            _cp(os.path.join(ws, f), os.path.join(out_dir, f)); cnt += 1
+    if os.path.exists(os.path.join(ws, "checker.py")):
+        _cp(os.path.join(ws, "checker.py"), os.path.join(out_dir, "checker.py"))
+    n = max(int(f[:-3]) for f in files)
+    open(os.path.join(out_dir, "config.yaml"), "w", encoding="utf-8").write(
+        f"name: {pid}\ntime_limit: {s.get('time_limit', 2.0)}\nmemory_limit: {s.get('memory_limit', 128)}\n"
+        f"test_cases: {n}\nscoring_mode: default\n")
+    return {"ok": True, "message": f"已应用 {n} 个测试点到题目 {pid}", "n": n, "copied": cnt}
