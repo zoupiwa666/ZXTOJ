@@ -64,7 +64,8 @@ require __DIR__.'/inc/header.php';
     <a data-t="6"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 造数据</a>
     <a data-t="7"><i class="fa-solid fa-user-gear"></i> 题目管理</a>
     <a data-t="8"><i class="fa-solid fa-users"></i> 群组与权限</a>
-    <a data-t="9"><i class="fa-solid fa-circle-question"></i> 常见问题</a>
+    <a data-t="9"><i class="fa-solid fa-code"></i> API 调用</a>
+    <a data-t="10"><i class="fa-solid fa-circle-question"></i> 常见问题</a>
   </nav>
 
   <div class="tut-content">
@@ -438,7 +439,88 @@ int main(int argc, char* argv[]) {
     </section>
 
     <!-- ======== 8 群组与权限 ======== -->
+        <!-- ======== 9 API 调用 ======== -->
     <section class="tut-section" id="tut-9">
+      <div class="tut-card">
+        <h1>API 调用教程</h1>
+        <div class="desc">用 curl / HTTP 直接调用 OJ 与评测机接口（脚本化、自动化集成）。</div>
+
+        <h2><i class="fa-solid fa-circle-1"></i> 获取访问凭证（OJCID）</h2>
+        <p style="font-size:12px;color:#bbb;line-height:1.8">登录后服务器会下发 <b>OJCID</b>（48 位登录凭证，一周有效）。用 curl 登录并保存：</p>
+        <div class="codeblock"># 登录并保存 cookie（含 OJCID）
+curl -c /tmp/cj.txt -b /tmp/cj.txt -X POST "http://IP:18001/login.php" \
+  -d "username=你的账号" -d "password=你的密码"
+
+# 之后带 cookie 访问受保护页面/API（一周内免登录）
+curl -b /tmp/cj.txt "http://IP:18001/api/xxx.php"</div>
+        <div class="ok"><i class="fa-solid fa-circle-check"></i> 也可以在 Cookie 里直接带 <code>OJCID=xxx</code>。</div>
+
+        <h2><i class="fa-solid fa-circle-2"></i> 评测机 API（端口 18000，无需登录）</h2>
+        <div class="tut-h">健康检查</div>
+        <div class="codeblock">curl http://IP:18000/health
+# {"status":"ok","pool_total":2,"pool_idle":2,...}</div>
+        <div class="tut-h">提交评测（自带测试用例）</div>
+        <div class="codeblock">curl -X POST http://IP:18000/judge -H "Content-Type: application/json" -d '{
+  "language": "python3",
+  "code": "print(input())",
+  "test_cases": [{"input": "42\n", "expected_output": "42\n", "score": 1}],
+  "checker": "def check(input, output, expected):\n    return output.strip()==expected.strip()",
+  "time_limit": 2.0,
+  "memory_limit": 128
+}'
+# {"task_id":"xxx","status":"pending","message":"任务已提交"}</div>
+        <div class="tut-h">按题目评测（用题目数据目录）</div>
+        <div class="codeblock">curl -X POST http://IP:18000/judge_by_problem -H "Content-Type: application/json" -d '{
+  "problem_id": "P1001",
+  "language": "cpp17",
+  "code": "#include <bits/stdc++.h>\nint main(){return 0;}",
+  "time_limit": 1.0,
+  "memory_limit": 64
+}'</div>
+        <div class="tut-h">查询结果</div>
+        <div class="codeblock">curl http://IP:18000/result/{task_id}
+# {"task_id":"...","status":"completed","score":100.0,
+#  "results":[{"verdict":"AC","time_used":0.02,"memory_used":7.9},...]}</div>
+        <div class="tut-h">流式结果（SSE）</div>
+        <div class="codeblock">curl -N http://IP:18000/stream/{task_id}
+# data: {"test_case_index":0,"verdict":"AC",...}
+# event: done</div>
+
+        <h2><i class="fa-solid fa-circle-3"></i> OJ API（端口 18001，需登录）</h2>
+        <div class="tut-h">AI 助手（造数据）</div>
+        <div class="codeblock"># 1. 创建会话
+curl -b "OJCID=你的CID" -X POST http://IP:18001/api/ai_studio_start.php \
+  -d "problem_id=P1001" -d "api_key=sk-xxx" -d "std_code=你的正解代码"
+# {"ok":true,"session_id":"..."}
+
+# 2. 发消息（聊天/要求造数据）
+curl -b "OJCID=你的CID" -X POST http://IP:18001/api/ai_studio_message.php \
+  -d "session_id=会话ID" --data-urlencode "user_msg=帮我生成 3 组测试数据"
+
+# 3. 拉取事件流（AI 回复/工具调用/进度）
+curl -b "OJCID=你的CID" "http://IP:18001/api/ai_studio_events.php?session_id=会话ID&since=0"
+# {"events":[{"type":"reply_delta","data":"..."},...],"done":false}
+
+# 4. 应用数据（落盘 + 同步数据库）
+curl -b "OJCID=你的CID" -X POST http://IP:18001/api/ai_studio_apply.php \
+  -d "problem_id=P1001" -d "session_id=会话ID"</div>
+        <div class="tut-h">数据包导入（服务器路径）</div>
+        <div class="codeblock">curl -b "OJCID=你的CID" -X POST http://IP:18001/api/import_by_path.php \
+  -d "server_path=/tmp/data.zip" -d "problem_id=P1001"</div>
+        <div class="tut-h">文件直链下载（公开）</div>
+        <div class="codeblock">curl -O "http://IP:18001/files/用户名/存储文件名"</div>
+
+        <h2><i class="fa-solid fa-circle-4"></i> 注意事项</h2>
+        <ul>
+          <li>POST JSON 接口需加请求头 <code>Content-Type: application/json</code>。</li>
+          <li>OJ 受保护 API 需要 <b>OJCID 或登录会话</b>；评测机 API 无需鉴权。</li>
+          <li>评测任务完成后结果只保留 60 秒，及时查询。</li>
+          <li>AI 助手事件按 <code>since</code> 增量拉取（最多 300 条/次），<code>done=true</code> 表示本轮结束。</li>
+        </ul>
+      </div>
+    </section>
+
+<section class="tut-section" id="tut-10">
       <div class="tut-card">
         <h1>群组与权限</h1>
         <div class="desc">通过用户组批量管理题目访问权限。</div>
