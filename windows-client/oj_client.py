@@ -1,15 +1,43 @@
 # -*- coding: utf-8 -*-
 """
-ZXT OJ Windows 客户端
+ZXT OJ Windows 客户端（现代版）
 功能：登录(OJCID) / 题库 / 查看题目 / 编辑题目 / 上传数据包 / 提交评测
+风格：无边框窗口 + 自定义标题栏 + Win11 圆角 + 深色现代排版
 依赖：Python 3.8+（标准库）   打包：pyinstaller -F -w oj_client.py
 """
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import json, os, threading, time, uuid, urllib.request, urllib.parse, http.cookiejar
+import json, os, threading, time, uuid, sys, urllib.request, urllib.parse, http.cookiejar
 
 CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "oj_client.json")
 DEFAULT_IP = "156.239.236.66:18001"
+
+# 现代配色
+C_BG      = "#0e0e12"   # 窗口背景
+C_PANEL   = "#16161d"   # 面板
+C_PANEL2  = "#1b1b23"   # 面板高亮
+C_BORDER  = "#26262f"   # 边框
+C_TEXT    = "#d5d5de"   # 主文字
+C_DIM     = "#8a8a96"   # 次要文字
+C_ACC     = "#4d9fff"   # 强调蓝
+C_OK      = "#2ecc71"   # 成功绿
+C_WARN    = "#ffab00"
+C_ERR     = "#ff5f56"
+FONT      = ("Segoe UI", 10)
+FONT_B    = ("Segoe UI", 10, "bold")
+FONT_S    = ("Segoe UI", 9)
+
+def enable_round_corners(root):
+    """Windows 11 原生窗口圆角（无边框下仍生效），失败自动忽略"""
+    try:
+        import ctypes
+        hwnd = root.winfo_id()
+        DWMWA_WINDOW_CORNER_PREFERENCE = 33
+        DWMWCP_ROUND = 2
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE,
+            ctypes.byref(ctypes.c_int(DWMWCP_ROUND)), ctypes.sizeof(ctypes.c_int))
+    except Exception:
+        pass
 
 def load_cfg():
     try:
@@ -49,8 +77,7 @@ class OJClient:
             parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode("utf-8"))
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{file_field}"; filename="{filename}"\r\nContent-Type: application/zip\r\n\r\n'.encode("utf-8"))
         parts.append(file_bytes); parts.append(f'\r\n--{boundary}--\r\n'.encode("utf-8"))
-        body = b"".join(parts)
-        r = urllib.request.Request(self.url(path), data=body,
+        r = urllib.request.Request(self.url(path), data=b"".join(parts),
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}", "User-Agent": "Mozilla/5.0"})
         try:
             resp = self.opener.open(r, timeout=120); return resp.status, resp.read().decode("utf-8", errors="replace")
@@ -107,102 +134,168 @@ class OJClient:
         return None
 
 LANGS = ["python3", "cpp17", "cpp14", "cpp20", "c"]
-VC = {"AC": "#2ecc71", "WA": "#ff4f4f", "TLE": "#ffab00", "MLE": "#d500f9", "RE": "#f8603a",
-      "OLE": "#0091ea", "CE": "#ff9100", "SE": "#999", "judging": "#5af", "waiting": "#999", "compiling": "#ffab00"}
+VC = {"AC": C_OK, "WA": C_ERR, "TLE": C_WARN, "MLE": "#d500f9", "RE": "#f8603a",
+      "OLE": "#0091ea", "CE": "#ff9100", "SE": "#999", "judging": C_ACC, "waiting": "#999", "compiling": C_WARN}
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("ZXT OJ 客户端")
-        self.geometry("980x720")
-        self.configure(bg="#111")
+        self.overrideredirect(True)                      # 无系统边框
+        self.configure(bg=C_BG)
+        self.geometry("1000x720")
+        self.minsize(860, 600)
+        self._offset = (0, 0)
         self.cfg = load_cfg()
         self.client = OJClient(self.cfg.get("server", DEFAULT_IP))
         self.problems = []
         self._build_ui()
-        self.after(100, self._auto_login)
+        self.after(60, lambda: enable_round_corners(self))   # Win11 圆角
+        self.after(120, self._auto_login)
 
-    # ---------------- UI ----------------
+    # ---------------- 现代控件辅助 ----------------
+    def _btn(self, parent, text, cmd, fg=C_TEXT, bg=C_PANEL2, hover="#24242e"):
+        """扁平圆角感按钮（hover 变色）"""
+        b = tk.Button(parent, text=text, command=cmd, font=FONT, fg=fg, bg=bg, bd=0,
+                      activebackground=hover, activeforeground="#fff", cursor="hand2",
+                      padx=14, pady=5, relief="flat")
+        b.bind("<Enter>", lambda e, w=b: w.config(bg=hover))
+        b.bind("<Leave>", lambda e, w=b, c=bg: w.config(bg=c))
+        return b
+
+    def _entry(self, parent, width=None, show=None, ph=""):
+        e = tk.Entry(parent, width=width, show=show, font=FONT, fg=C_TEXT, bg="#101016",
+                     insertbackground=C_TEXT, relief="flat", highlightthickness=1,
+                     highlightbackground=C_BORDER, highlightcolor=C_ACC)
+        return e
+
+    def _text(self, parent, h=4, wrap="word"):
+        t = tk.Text(parent, bg="#101016", fg=C_TEXT, insertbackground=C_TEXT, font=FONT,
+                    bd=0, wrap=wrap, highlightthickness=1, highlightbackground=C_BORDER,
+                    highlightcolor=C_ACC, padx=10, pady=8)
+        return t
+
+    # ---------------- 布局 ----------------
     def _build_ui(self):
-        style = ttk.Style(self); style.theme_use("clam")
-        style.configure("TFrame", background="#111")
-        style.configure("TLabel", background="#111", foreground="#ccc", font=("Consolas", 10))
-        style.configure("TLabelframe", background="#16161c", foreground="#999")
-        style.configure("TLabelframe.Label", background="#16161c", foreground="#5af", font=("Consolas", 10))
-        style.configure("TButton", background="#2a2a2a", foreground="#ddd", font=("Consolas", 10))
-        style.map("TButton", background=[("active", "#3a3a3a")])
-        style.configure("TNotebook", background="#111", borderwidth=0)
-        style.configure("TNotebook.Tab", background="#1e1e1e", foreground="#999", padding=(14, 6), font=("Consolas", 10))
-        style.map("TNotebook.Tab", background=[("selected", "#16161c")], foreground=[("selected", "#5af")])
+        # 自定义标题栏（可拖动）
+        bar = tk.Frame(self, bg="#121218", height=38)
+        bar.pack(fill="x"); bar.pack_propagate(False)
+        logo = tk.Label(bar, text="◈  ZXT OJ", bg="#121218", fg="#fff", font=("Segoe UI", 11, "bold"))
+        logo.pack(side="left", padx=14)
+        self.lb_status = tk.Label(bar, text="未登录", bg="#121218", fg=C_DIM, font=FONT_S)
+        self.lb_status.pack(side="left", padx=12)
+        for txt, cmd in [("─", self.iconify), ("✕", self.destroy)]:
+            b = tk.Label(bar, text=txt, bg="#121218", fg=C_DIM, font=("Segoe UI", 13),
+                         padx=10, cursor="hand2")
+            b.pack(side="right")
+            b.bind("<Button-1>", lambda e, c=cmd: c())
+            b.bind("<Enter>", lambda e, w=b: w.config(fg="#fff"))
+            b.bind("<Leave>", lambda e, w=b: w.config(fg=C_DIM))
+        bar.bind("<Button-1>", self._start_move)
+        bar.bind("<B1-Motion>", self._on_move)
+        logo.bind("<Button-1>", self._start_move)
+        logo.bind("<B1-Motion>", self._on_move)
 
-        top = ttk.Frame(self); top.pack(fill="x", padx=8, pady=6)
-        ttk.Label(top, text="服务器:").pack(side="left")
-        self.e_server = ttk.Entry(top, width=22); self.e_server.pack(side="left", padx=4)
+        # 登录工具条
+        top = tk.Frame(self, bg=C_BG)
+        top.pack(fill="x", padx=16, pady=(12, 8))
+        self.e_server = self._entry(top, 24); self.e_server.pack(side="left")
         self.e_server.insert(0, self.cfg.get("server", DEFAULT_IP))
-        ttk.Label(top, text="用户:").pack(side="left", padx=(14, 2))
-        self.e_user = ttk.Entry(top, width=12); self.e_user.pack(side="left")
+        self.e_user = self._entry(top, 12); self.e_user.pack(side="left", padx=(10, 0))
         self.e_user.insert(0, self.cfg.get("username", ""))
-        ttk.Label(top, text="密码:").pack(side="left", padx=(8, 2))
-        self.e_pass = ttk.Entry(top, width=14, show="*"); self.e_pass.pack(side="left")
-        self.btn_login = ttk.Button(top, text="登录", command=self.on_login); self.btn_login.pack(side="left", padx=6)
-        self.btn_reload = ttk.Button(top, text="刷新题库", command=self.on_refresh_problems); self.btn_reload.pack(side="left")
-        self.lb_login = ttk.Label(top, text="未登录"); self.lb_login.pack(side="left", padx=6)
+        self.e_pass = self._entry(top, 14, show="*"); self.e_pass.pack(side="left", padx=(10, 0))
+        self.btn_login = self._btn(top, "登录", self.on_login, fg="#fff", bg="#1a3a5c", hover="#1f4a75")
+        self.btn_login.pack(side="left", padx=(10, 6))
+        self.btn_reload = self._btn(top, "↻ 刷新题库", self.on_refresh_problems)
+        self.btn_reload.pack(side="left")
 
-        mid = ttk.Frame(self); mid.pack(fill="both", expand=True, padx=8, pady=4)
-        lf = ttk.Labelframe(mid, text="题库"); lf.pack(side="left", fill="y", padx=(0, 6))
-        self.listbox = tk.Listbox(lf, width=36, bg="#0d0d12", fg="#ccc", selectbackground="#1a3a5c",
-                                  font=("Consolas", 10), bd=0, highlightthickness=0)
+        # 主区
+        mid = tk.Frame(self, bg=C_BG)
+        mid.pack(fill="both", expand=True, padx=16, pady=(4, 12))
+
+        # 左：题库（卡片式）
+        side = tk.Frame(mid, bg=C_PANEL, highlightbackground=C_BORDER, highlightthickness=1)
+        side.pack(side="left", fill="y")
+        tk.Label(side, text="题库", bg=C_PANEL, fg=C_DIM, font=FONT_B, padx=14, pady=8).pack(anchor="w")
+        self.listbox = tk.Listbox(side, width=38, bg=C_PANEL2, fg=C_TEXT, selectbackground="#1a3a5c",
+                                  selectforeground="#fff", font=FONT, bd=0, highlightthickness=0,
+                                  activestyle="none", relief="flat")
         self.listbox.pack(side="left", fill="y")
         self.listbox.bind("<<ListboxSelect>>", lambda e: self.on_select_problem())
 
-        right = ttk.Frame(mid); right.pack(side="left", fill="both", expand=True)
-        self.nb = ttk.Notebook(right); self.nb.pack(fill="both", expand=True)
+        # 右：内容 Notebook
+        right = tk.Frame(mid, bg=C_BG)
+        right.pack(side="left", fill="both", expand=True, padx=(12, 0))
+        self.nb = ttk.Notebook(right)
+        self.nb.pack(fill="both", expand=True)
         self._tab_detail(); self._tab_edit(); self._tab_upload(); self._tab_submit()
 
+        # 底部状态栏
+        status = tk.Frame(self, bg="#121218", height=26)
+        status.pack(fill="x", side="bottom"); status.pack_propagate(False)
+        tk.Label(status, text="ZXT OJ 客户端 · OJCID 一周免登录 · 指令计数评测",
+                 bg="#121218", fg="#555", font=FONT_S).pack(side="left", padx=12)
+
     def _tab_detail(self):
-        f = ttk.Frame(self.nb); self.nb.add(f, text="题目详情")
-        self.txt_detail = tk.Text(f, bg="#0d0d12", fg="#ccc", font=("Consolas", 11), bd=0, wrap="word",
-                                  padx=10, pady=8, state="disabled")
-        self.txt_detail.pack(fill="both", expand=True)
+        f = tk.Frame(self.nb, bg=C_PANEL)
+        self.nb.add(f, text="  题目详情  ")
+        self.txt_detail = self._text(f, wrap="word")
+        self.txt_detail.pack(fill="both", expand=True, padx=10, pady=10)
+        self.txt_detail.config(state="disabled")
 
     def _tab_edit(self):
-        f = ttk.Frame(self.nb); self.nb.add(f, text="编辑题目")
-        box = ttk.Frame(f); box.pack(fill="both", expand=True, padx=8, pady=6)
-        self.e_title = ttk.Entry(box); self.e_title.pack(fill="x", pady=2)
-        row = ttk.Frame(box); row.pack(fill="x", pady=2)
-        ttk.Label(row, text="时限(s)").pack(side="left"); self.e_tl = ttk.Entry(row, width=8); self.e_tl.pack(side="left", padx=4)
-        ttk.Label(row, text="内存(MB)").pack(side="left"); self.e_ml = ttk.Entry(row, width=8); self.e_ml.pack(side="left", padx=4)
-        ttk.Label(row, text="可见性").pack(side="left"); self.cb_vis = ttk.Combobox(row, values=["public", "hidden"], width=8, state="readonly"); self.cb_vis.pack(side="left", padx=4); self.cb_vis.set("public")
-        self.e_bg = tk.Text(box, height=2, bg="#0d0d12", fg="#ccc", insertbackground="#ccc", font=("Consolas", 10), bd=0); self.e_bg.pack(fill="x", pady=2)
-        self.e_desc = tk.Text(box, height=4, bg="#0d0d12", fg="#ccc", insertbackground="#ccc", font=("Consolas", 10), bd=0); self.e_desc.pack(fill="both", expand=True, pady=2)
-        ttk.Button(box, text="保存题目", command=self.on_save_problem).pack(pady=4)
-        for w, ph in [(self.e_bg, "背景 (Markdown/LaTeX)"), (self.e_desc, "题目描述")]:
-            w.insert("1.0", "")
+        f = tk.Frame(self.nb, bg=C_PANEL)
+        self.nb.add(f, text="  编辑题目  ")
+        box = tk.Frame(f, bg=C_PANEL); box.pack(fill="both", expand=True, padx=14, pady=10)
+        self.e_title = self._entry(box); self.e_title.pack(fill="x")
+        row = tk.Frame(box, bg=C_PANEL); row.pack(fill="x", pady=(8, 4))
+        for lb, w, key in [("时限(s)", 8, "e_tl"), ("内存(MB)", 8, "e_ml")]:
+            tk.Label(row, text=lb, bg=C_PANEL, fg=C_DIM, font=FONT_S).pack(side="left")
+            setattr(self, key, self._entry(row, w)); getattr(self, key).pack(side="left", padx=(4, 12))
+        tk.Label(row, text="可见性", bg=C_PANEL, fg=C_DIM, font=FONT_S).pack(side="left")
+        self.cb_vis = ttk.Combobox(row, values=["public", "hidden"], width=8, state="readonly",
+                                   font=FONT, foreground=C_TEXT)
+        self.cb_vis.pack(side="left", padx=4); self.cb_vis.set("public")
+        tk.Label(box, text="背景（Markdown / LaTeX）", bg=C_PANEL, fg=C_DIM, font=FONT_S).pack(anchor="w", pady=(6, 2))
+        self.e_bg = self._text(box, 2); self.e_bg.pack(fill="x")
+        tk.Label(box, text="题目描述", bg=C_PANEL, fg=C_DIM, font=FONT_S).pack(anchor="w", pady=(6, 2))
+        self.e_desc = self._text(box, 5); self.e_desc.pack(fill="both", expand=True)
+        self._btn(box, "保存题目", self.on_save_problem, fg="#fff", bg="#1a3a5c", hover="#1f4a75").pack(pady=8)
 
     def _tab_upload(self):
-        f = ttk.Frame(self.nb); self.nb.add(f, text="上传数据包")
-        box = ttk.Frame(f); box.pack(fill="x", padx=8, pady=8)
-        row = ttk.Frame(box); row.pack(fill="x")
-        self.e_zip = ttk.Entry(row); self.e_zip.pack(side="left", fill="x", expand=True, padx=(0, 4))
-        ttk.Button(row, text="选择 zip", command=self.on_pick_zip).pack(side="left", padx=2)
-        ttk.Button(row, text="上传并导入", command=self.on_upload).pack(side="left", padx=2)
-        self.txt_up = tk.Text(f, bg="#0a0e14", fg="#bbb", font=("Consolas", 10), height=8, bd=0, state="disabled")
-        self.txt_up.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        f = tk.Frame(self.nb, bg=C_PANEL)
+        self.nb.add(f, text="  上传数据包  ")
+        box = tk.Frame(f, bg=C_PANEL); box.pack(fill="x", padx=14, pady=12)
+        row = tk.Frame(box, bg=C_PANEL); row.pack(fill="x")
+        self.e_zip = self._entry(row); self.e_zip.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self._btn(row, "选择 zip", self.on_pick_zip).pack(side="left", padx=2)
+        self._btn(row, "上传并导入", self.on_upload, fg="#fff", bg="#1a3a5c", hover="#1f4a75").pack(side="left", padx=2)
+        tk.Label(f, text="支持 zip / tar.gz，自动补全 config.yaml 与 checker",
+                 bg=C_PANEL, fg=C_DIM, font=FONT_S).pack(anchor="w", padx=14, pady=(0, 4))
+        self.txt_up = self._text(f, 6, wrap="word"); self.txt_up.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+        self.txt_up.config(state="disabled")
 
     def _tab_submit(self):
-        f = ttk.Frame(self.nb); self.nb.add(f, text="提交评测")
-        crow = ttk.Frame(f); crow.pack(fill="x", padx=8, pady=6)
-        ttk.Label(crow, text="题目:").pack(side="left")
-        self.e_pid = ttk.Entry(crow, width=10); self.e_pid.pack(side="left", padx=3)
-        ttk.Label(crow, text="语言:").pack(side="left", padx=(10, 2))
-        self.cb_lang = ttk.Combobox(crow, values=LANGS, width=9, state="readonly"); self.cb_lang.pack(side="left"); self.cb_lang.set("python3")
-        self.btn_sub = ttk.Button(crow, text="提交评测", command=self.on_submit); self.btn_sub.pack(side="right", padx=4)
-        self.txt_code = tk.Text(f, bg="#0d0d12", fg="#ccc", insertbackground="#ccc", font=("Consolas", 11), bd=0, wrap="none")
-        self.txt_code.pack(fill="both", expand=True, padx=8, pady=(0, 4))
-        self.txt_res = tk.Text(f, bg="#0a0e14", fg="#bbb", font=("Consolas", 10), height=8, bd=0, state="disabled")
-        self.txt_res.pack(fill="both", padx=8, pady=(0, 8))
+        f = tk.Frame(self.nb, bg=C_PANEL)
+        self.nb.add(f, text="  提交评测  ")
+        row = tk.Frame(f, bg=C_PANEL); row.pack(fill="x", padx=14, pady=10)
+        tk.Label(row, text="题目", bg=C_PANEL, fg=C_DIM, font=FONT_S).pack(side="left")
+        self.e_pid = self._entry(row, 10); self.e_pid.pack(side="left", padx=4)
+        tk.Label(row, text="语言", bg=C_PANEL, fg=C_DIM, font=FONT_S).pack(side="left", padx=(12, 2))
+        self.cb_lang = ttk.Combobox(row, values=LANGS, width=9, state="readonly", font=FONT, foreground=C_TEXT)
+        self.cb_lang.pack(side="left"); self.cb_lang.set("python3")
+        self.btn_sub = self._btn(row, "提交评测", self.on_submit, fg="#fff", bg="#1a3a5c", hover="#1f4a75")
+        self.btn_sub.pack(side="right")
+        self.txt_code = self._text(f, wrap="none"); self.txt_code.pack(fill="both", expand=True, padx=14, pady=(0, 8))
+        self.txt_res = self._text(f, 7, wrap="word"); self.txt_res.pack(fill="both", padx=14, pady=(0, 12))
+        self.txt_res.config(state="disabled")
 
-    # ---------------- 工具 ----------------
+    # ---------------- 窗口拖动 / 状态 ----------------
+    def _start_move(self, e): self._offset = (e.x, e.y)
+    def _on_move(self, e):
+        x = self.winfo_x() + e.x - self._offset[0]
+        y = self.winfo_y() + e.y - self._offset[1]
+        self.geometry(f"+{x}+{y}")
+
     def _log(self, w, s, color=None):
         w.config(state="normal"); w.insert("end", s + "\n")
         if color:
@@ -210,7 +303,7 @@ class App(tk.Tk):
         w.see("end"); w.config(state="disabled")
 
     def _set_login(self, ok, msg):
-        self.lb_login.config(text=msg, foreground=("#2ecc71" if ok else "#ff6b6b"))
+        self.lb_status.config(text=msg, fg=(C_OK if ok else C_ERR))
 
     def _auto_login(self):
         if self.cfg.get("ojcid"):
@@ -220,6 +313,7 @@ class App(tk.Tk):
             self._set_login(True, f"已登录 {self.cfg.get('username','')}")
             self.on_refresh_problems()
 
+    # ---------------- 功能 ----------------
     def on_login(self):
         self.btn_login.config(state="disabled"); self._set_login(False, "登录中...")
         def work():
@@ -246,13 +340,13 @@ class App(tk.Tk):
 
     def _fill_problems(self, ps):
         if ps is None:
-            self._set_login(False, "题库加载失败（请检查服务器/OJCID）"); return
+            self._set_login(False, "题库加载失败"); return
         self.problems = ps
         self.listbox.delete(0, "end")
         for p in ps:
             rate = f"{p['ac']}/{p['submissions']}" if p['submissions'] else "-"
             self.listbox.insert("end", f"  {p['problem_id']:<12} {p['title'][:18]:<18} {rate} AC")
-        self._set_login(True, f"已登录 {self.cfg.get('username','')}（{len(ps)} 题）")
+        self._set_login(True, f"已登录 {self.cfg.get('username','')} · {len(ps)} 题")
 
     def _cur_pid(self):
         sel = self.listbox.curselection()
@@ -275,7 +369,7 @@ class App(tk.Tk):
 
     def _show_detail(self, d):
         if not d or not d.get("ok"):
-            self._log(self.txt_detail, f"[错误] {d.get('message','') if d else '加载失败'}", "#ff6b6b"); return
+            self._log(self.txt_detail, f"[错误] {d.get('message','') if d else '加载失败'}", C_ERR); return
         self.txt_detail.config(state="normal"); self.txt_detail.delete("1.0", "end")
         s = f"【{d['problem_id']}】{d['title']}\n限制: {d['time_limit']}s / {d['memory_limit']}MB  可见性: {d['visibility']}\n"
         for k, lb in [("background", "背景"), ("description", "描述"), ("input_format", "输入格式"),
@@ -309,11 +403,11 @@ class App(tk.Tk):
         zipf = self.e_zip.get().strip(); pid, _ = self._cur_pid()
         if not zipf: messagebox.showwarning("提示", "请选择 zip 数据包"); return
         if not pid: messagebox.showwarning("提示", "请选择题目"); return
-        self._log(self.txt_up, f"[上传] {os.path.basename(zipf)} -> {pid}", "#5af")
+        self._log(self.txt_up, f"[上传] {os.path.basename(zipf)} -> {pid}", C_ACC)
         def work():
             ok, msg = self.client.upload_zip(zipf, pid)
-            self.after(0, lambda: self._log(self.txt_up, ("✅ " + msg) if ok else ("❌ " + msg),
-                                            "#2ecc71" if ok else "#ff6b6b"))
+            self.after(0, lambda: self._log(self.txt_up, ("✓ " + msg) if ok else ("✗ " + msg),
+                                            C_OK if ok else C_ERR))
         threading.Thread(target=work, daemon=True).start()
 
     def on_submit(self):
@@ -321,20 +415,18 @@ class App(tk.Tk):
         if not pid: messagebox.showwarning("提示", "请输入题目编号"); return
         if not code: messagebox.showwarning("提示", "请输入代码"); return
         self.btn_sub.config(state="disabled")
-        self._log(self.txt_res, f"[提交] {pid} {self.cb_lang.get()}", "#5af")
+        self._log(self.txt_res, f"[提交] {pid} {self.cb_lang.get()}", C_ACC)
         def work():
             sid = self.client.submit(pid, self.cb_lang.get(), code)
             if not sid:
-                self.after(0, lambda: (self._log(self.txt_res, "提交失败（检查登录/题目）", "#ff6b6b"),
+                self.after(0, lambda: (self._log(self.txt_res, "提交失败（检查登录/题目）", C_ERR),
                                        self.btn_sub.config(state="normal"))); return
-            self.after(0, lambda: self._log(self.txt_res, f"[队列] 提交 #{sid}，等待评测...", "#ffab00"))
+            self.after(0, lambda: self._log(self.txt_res, f"[队列] 提交 #{sid}，等待评测...", C_WARN))
             for _ in range(120):
                 time.sleep(2)
                 s = self.client.status(sid)
                 if not s: continue
-                st = s.get("status", "")
-                if st in ("waiting", "judging", "compiling"):
-                    continue
+                if s.get("status") in ("waiting", "judging", "compiling"): continue
                 self.after(0, lambda s=s: self._show_result(s)); break
             self.after(0, lambda: self.btn_sub.config(state="normal"))
         threading.Thread(target=work, daemon=True).start()
@@ -342,9 +434,9 @@ class App(tk.Tk):
     def _show_result(self, s):
         st = s.get("status", "?"); score = s.get("score", 0); mx = s.get("max_score", 0)
         color = VC.get(st, "#ccc")
-        self._log(self.txt_res, "========================", "#666")
-        self._log(self.txt_res, f"状态: {st}  得分: {score}/{mx}  通过: {s.get('passed_tests',0)}/{s.get('total_tests',0)}", color)
-        self._log(self.txt_res, f"总耗时: {s.get('total_time','-')}s  峰值内存: {s.get('peak_memory','-')}MB", "#aaa")
+        self._log(self.txt_res, "─" * 40, "#555")
+        self._log(self.txt_res, f"状态: {st}    得分: {score}/{mx}    通过: {s.get('passed_tests',0)}/{s.get('total_tests',0)}", color)
+        self._log(self.txt_res, f"总耗时: {s.get('total_time','-')}s  峰值内存: {s.get('peak_memory','-')}MB", C_DIM)
         try:
             det = json.loads(s.get("details") or "[]")
             rows = []
@@ -353,9 +445,9 @@ class App(tk.Tk):
                 rows.append(f"  #{r.get('test_case_index',0)+1:<3} {r.get('verdict','?'):<5} "
                             f"{r.get('time_used',0):<8.3f}s {r.get('memory_used',0):<7.2f}MB"
                             + (f"  {r.get('error','')[:60]}" if r.get('error') else ""))
-            if rows: self._log(self.txt_res, "\n".join(rows[:25]), "#bbb")
+            if rows: self._log(self.txt_res, "\n".join(rows[:25]), C_TEXT)
         except Exception: pass
-        self._log(self.txt_res, "========================", "#666")
+        self._log(self.txt_res, "─" * 40, "#555")
 
 if __name__ == "__main__":
     App().mainloop()
