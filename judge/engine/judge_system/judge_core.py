@@ -3,6 +3,7 @@ import sys, os, json, subprocess, time, resource, argparse, traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from perf_counter import PerfCounters, INS_NS, SYSCALL_NS, PF_NS
+from interactive import run_interactive
 
 V_AC, V_WA, V_TLE, V_MLE, V_RE, V_OLE, V_CE, V_SE = "AC","WA","TLE","MLE","RE","OLE","CE","SE"
 
@@ -169,7 +170,7 @@ def run_checker(checker_code, inp, out, exp, max_score=1.0):
     except Exception as e: return False,f"checker 异常:{e}",0.0
 
 def process_one_case(args_tuple):
-    i, c, lang, workdir, shared_dir, tl, ml, ol, ck, output_dir, ck_exe = args_tuple
+    i, c, lang, workdir, shared_dir, tl, ml, ol, ck, output_dir, ck_exe, interactive, inter_cmd = args_tuple
     inp=c.get("input",""); exp=c.get("expected_output","")
     ct=c.get("time_limit",tl); cm=c.get("memory_limit",ml); max_score=c.get("score",1.0)
 
@@ -179,15 +180,28 @@ def process_one_case(args_tuple):
     exp = c.get("expected_output", "")
     if c.get("output_file"):
         exp = open(c["output_file"], 'r', encoding='utf-8', errors='replace').read()
-    rr = run_case_sync(lang, workdir, shared_dir, inp, ct, cm)
+    if interactive and inter_cmd:
+        # 交互题：选手与 interactor 双管道实时通信
+        in_f = os.path.join(shared_dir, f"int_{i}_in.txt")
+        ans_f = os.path.join(shared_dir, f"int_{i}_ans.txt")
+        open(in_f, "w", encoding="utf-8").write(inp)
+        open(ans_f, "w", encoding="utf-8").write(exp)
+        sol_cmd = [f"{shared_dir}/solution"] if lang != "python3" else ["python3", "-u", f"{workdir}/solution.py"]
+        rr = run_interactive(sol_cmd, inter_cmd, in_f, ans_f, ct, cm, shared_dir)
+    else:
+        rr = run_case_sync(lang, workdir, shared_dir, inp, ct, cm)
     verdict=rr["verdict"]; output=rr.get("output",""); err_msg=rr.get("error")
 
     # OLE 前置判定：仅无 checker 时生效；有 checker（special judge）时输出合法性交给 checker 判断
-    if verdict==V_AC and ck is None and len(output.encode())>ol:
+    if not interactive and verdict==V_AC and ck is None and len(output.encode())>ol:
         verdict=V_OLE; err_msg=f"输出超限:{len(output.encode())}B > {ol}B"
 
     passed=False; score=0.0
-    if verdict==V_AC:
+    if interactive and inter_cmd:
+        # 交互题：判定以 interactor 退出码为准（选手输出经管道交互，不参与输出比对）
+        passed = (verdict == V_AC)
+        score = max_score if passed else 0.0
+    elif verdict==V_AC:
         if ck == "TESTLIB" and ck_exe is not None:
             # testlib checker：写临时文件（in/out/ans）后运行 checker in out ans
             try:
@@ -277,6 +291,27 @@ def main():
                 i += 1
         else:
             cases=json.loads((Path(args.workdir)/"test_cases.json").read_text())
+        # 交互题：检测 interactor（interactor.cpp 编译 / interactor.py / interactor.sh）
+        interactive = False; inter_cmd = None
+        for dsrc in (args.workdir, data_dir):
+            if dsrc and os.path.isdir(dsrc):
+                ic = os.path.join(dsrc, "interactor.cpp")
+                if os.path.exists(ic):
+                    iexe = os.path.join(shared_root if "shared_root" in dir() else args.shared_dir, "interactor_exe")
+                    rc, o, e = run_proc(["g++", "-O2", "-o", iexe, ic, "-I", "/judge_system"], 60, dsrc)
+                    if rc == 0:
+                        inter_cmd = [iexe]; interactive = True
+                    else:
+                        result["status"]="failed"; result["system_error"]="interactor 编译失败:\n" + (e or o)[-500:]
+                        (Path(args.output_dir)/"result.json").write_text(json.dumps(result, ensure_ascii=False)); return
+                    break
+                ip = os.path.join(dsrc, "interactor.py")
+                if os.path.exists(ip):
+                    inter_cmd = ["python3", ip]; interactive = True; break
+                ish = os.path.join(dsrc, "interactor.sh")
+                if os.path.exists(ish):
+                    inter_cmd = ["bash", ish]; interactive = True; break
+
         # checker：优先 testlib C++（checker.cpp 编译运行），否则 Python（checker.py check 函数）
         ck = None; ck_exe = None
         cpp_cp = Path(args.workdir)/"checker.cpp"
@@ -314,7 +349,7 @@ def main():
                 (Path(args.output_dir)/"result.json").write_text(json.dumps(result,ensure_ascii=False)); return
         emit_status("running", "评测中...")
 
-        tasks=[(i,c,lang,args.workdir,args.shared_dir,tl,ml,ol,ck,args.output_dir,ck_exe)
+        tasks=[(i,c,lang,args.workdir,args.shared_dir,tl,ml,ol,ck,args.output_dir,ck_exe,interactive,inter_cmd)
                for i,c in enumerate(cases)]
         all_r=[None]*len(cases)
 

@@ -24,3 +24,8 @@ oj/site/uploads/avatars/*
 data/.ojupload_pw
 data/packages/*
 data/.deepseek_key
+
+# AI 运行时会话数据
+data/ai_sessions/
+data/ai_ws/
+data/userfiles/
