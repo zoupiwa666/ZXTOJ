@@ -92,6 +92,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg='已移除 checker（标准比对）。';
         }
     }
+    elseif ($action === 'save_interactor' && !$isNew) {
+        // 交互题 testlib：开启时写 interactor.cpp，关闭时移除（评测端以文件存在与否判定交互模式）
+        $enabled = ($_POST['interactor_enabled'] ?? '0') === '1';
+        $code = $_POST['interactor_code'] ?? '';
+        $dataDir = "/data/problems/$pid";
+        @mkdir($dataDir, 0777, true);
+        if ($enabled) {
+            if (trim($code) === '') { $msg='交互题需提供 interactor 代码（testlib C++）'; goto end; }
+            file_put_contents("$dataDir/interactor.cpp", $code);
+            $msg='interactor.cpp 已保存（交互题已启用）。';
+        } else {
+            @unlink("$dataDir/interactor.cpp");
+            $msg='已移除 interactor，本题为普通评测。';
+        }
+        $hasInteractor = $enabled; $interactorCode = $enabled ? $code : '';
+    }
     elseif ($action === 'grant_user' && !$isNew) {
         $user=trim($_POST['grant_username']??'');
         if($user){$pdo->prepare("INSERT IGNORE INTO problem_permissions (problem_id,username,granted_by) VALUES (?,?,?)")->execute([$pid,$user,currentUser()['username']]);$msg='已授权。';}
@@ -120,6 +136,8 @@ if(!$isNew){
     $hasCppCk = file_exists("$dataDir/checker.cpp");
     $pyCkCode = $hasPyCk ? file_get_contents("$dataDir/checker.py") : '';
     $cppCkCode = $hasCppCk ? file_get_contents("$dataDir/checker.cpp") : '';
+    $hasInteractor = file_exists("$dataDir/interactor.cpp");
+    $interactorCode = $hasInteractor ? file_get_contents("$dataDir/interactor.cpp") : '';
 }
 $pageTitle=($isNew?'新建':'编辑').'题目 - Zxt Super OJ';
 require __DIR__.'/inc/header.php';
@@ -233,6 +251,21 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 </form>
 </div>
 
+<div class="card"><h3><i class="fa-solid fa-comments"></i> 交互题配置（testlib interactor）</h3>
+<form method="POST"><input type="hidden" name="action" value="save_interactor">
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+  <select name="interactor_enabled" id="itEnabled" style="width:220px" onchange="switchItEnabled()">
+    <option value="0" <?=$hasInteractor?'':'selected'?>>关闭（普通评测）</option>
+    <option value="1" <?=$hasInteractor?'selected':''?>>开启（交互题）</option>
+  </select>
+  <span id="itStatus" style="font-size:12px;color:<?=$hasInteractor?'#2ecc71':'#666'?>"><?=$hasInteractor?'已配置 interactor.cpp':'未配置'?></span>
+</div>
+<textarea name="interactor_code" id="itCode" rows="14" style="font-family:monospace;font-size:12px" placeholder="开启后编写交互程序（C++ testlib）..."></textarea>
+<div style="font-size:11px;color:#666;margin:4px 0">选手与 interactor 经 stdin/stdout 双向实时通信。registerInteraction(argc,argv)：argv[1]=输入文件、argv[2]=交互日志、argv[3]=答案文件；退出码 0=AC，非 0=WA。评测端按代码内容 MD5 预编译缓存，改动后自动重编。</div>
+<button class="btn" style="margin-top:8px"><i class="fa-solid fa-floppy-disk"></i> 保存交互题配置</button>
+</form>
+</div>
+
 <div class="card"><h3><i class="fa-solid fa-file-import"></i> 导入数据包（已有 <span id="tcCount"><?=$tcCount?></span> 个测试点 / 目录 <?=$inCount?> 组文件）</h3>
 <label class="file-zone" id="dz"><div style="font-size:20px">+</div><div style="font-size:12px">拖拽或点击上传 .zip / .tar.gz</div><div style="font-size:11px;color:#999" id="fn">未选择</div><input type="file" name="package" accept=".zip,.tar.gz,.tgz,.tar" id="pf"></label>
 <button class="btn" style="margin-top:12px" onclick="uploadPackage()" id="importBtn">标准上传</button>
@@ -253,6 +286,8 @@ label{font-size:11px;color:#999;display:block;margin-bottom:2px}
 <div class="kv"><span>config.yaml</span><b><?=file_exists("$dataDir/config.yaml")?'已存在':'缺失（保存上方表单自动生成）'?></b></div>
 <div class="kv"><span>首个测试点大小</span><b><?=file_exists("$dataDir/1.in")?number_format(filesize("$dataDir/1.in")).'B':'—'?></b></div>
 <?php else:?><div class="empty" style="color:#999;font-size:12px">暂无测试数据。</div><?php endif?>
+<div style="margin-top:12px"><a class="btn" href="api/download_package.php?problem_id=<?=urlencode($pid)?>"><i class="fa-solid fa-download"></i> 下载数据包 (zip)</a>
+<span style="font-size:11px;color:#666;margin-left:8px">打包全部数据文件：测试点 / config.yaml / checker / interactor</span></div>
 </div>
 <?php endif?>
 </div>
@@ -330,6 +365,33 @@ function switchCkType(){
   else { code.value = ''; hint.textContent='标准比对：逐行比较选手输出与标准答案'; st.textContent = '未配置'; }
 }
 switchCkType();
+const IT_CODE = <?=json_encode($interactorCode ?? '')?>;
+const IT_TMPL = `#include "testlib.h"
+#include <iostream>
+using namespace std;
+int main(int argc, char* argv[]) {
+    // registerInteraction: argv[1]=输入文件 argv[2]=日志 argv[3]=答案文件
+    // 选手与 interactor 经 stdin/stdout 双向通信
+    registerInteraction(argc, argv);
+    // 例（猜数）:
+    // int ans = inf.readInt();
+    // cout << "guess 1 100" << endl;
+    // for (int i = 0; i < 30; i++) {
+    //     int g; cin >> g;
+    //     if (g == ans) { cout << "correct" << endl; quitf(_ok, "correct"); }
+    //     cout << (g < ans ? "higher" : "lower") << endl;
+    // }
+    // quitf(_wa, "too many guesses");
+    return 0;
+}`;
+function switchItEnabled(){
+  const on = document.getElementById('itEnabled').value === '1';
+  const code = document.getElementById('itCode');
+  const st = document.getElementById('itStatus');
+  if(on){ if(!code.value.trim()) code.value = IT_CODE || IT_TMPL; st.textContent = IT_CODE ? '已配置 interactor.cpp' : '（未保存，填写后保存生效）'; }
+  else { code.value=''; st.textContent='未配置（普通评测）'; }
+}
+switchItEnabled();
 const dz=document.getElementById('dz'),pf=document.getElementById('pf'),fn=document.getElementById('fn');if(dz){dz.addEventListener('click',()=>pf.click());pf.addEventListener('change',()=>fn.textContent=pf.files[0]?.name||'未选择');}
 function uploadPackage(){
  const f=document.getElementById('pf').files[0];if(!f)return;

@@ -47,6 +47,13 @@ foreach ($info['test_cases'] as $tc) {
 if (isset($info['time_limit'])) $pdo->prepare("UPDATE problems SET time_limit=? WHERE problem_id=?")->execute([floatval($info['time_limit']), $pid]);
 if (isset($info['memory_limit'])) $pdo->prepare("UPDATE problems SET memory_limit=? WHERE problem_id=?")->execute([intval($info['memory_limit']), $pid]);
 
+// interactor 落盘：交互题判定以 interactor.cpp 是否存在为准
+if (!empty($info['interactor'])) {
+    file_put_contents("$dir/interactor.cpp", $info['interactor']);
+} else {
+    @unlink("$dir/interactor.cpp");
+}
+
 // checker 落盘（Python 优先：有 checker.py 就不写 checker.cpp；只有 cpp 才写 cpp）
 if (!empty($info['checker'])) {
     file_put_contents("$dir/checker.py", $info['checker']);
@@ -60,7 +67,7 @@ if (!empty($info['checker'])) {
 $cfgTl = floatval($info['time_limit'] ?? 2.0);
 $cfgMl = intval($info['memory_limit'] ?? 128);
 $cfgName = preg_replace('/[\r\n:]+/', ' ', $info['name'] ?? $pid);
-file_put_contents("$dir/config.yaml", "name: $cfgName\ntime_limit: $cfgTl\nmemory_limit: $cfgMl\ntest_cases: ".($i-1)."\nscoring_mode: ".($info['scoring_mode'] ?? 'default')."\n");
+file_put_contents("$dir/config.yaml", "name: $cfgName\ntime_limit: $cfgTl\nmemory_limit: $cfgMl\ntest_cases: ".($i-1)."\nscoring_mode: ".($info['scoring_mode'] ?? 'default')."\ninteractive: ".(!empty($info['interactor']) ? 'true' : 'false')."\n");
 
 echo json_encode(['ok'=>true, 'message'=>"导入成功！".($i-1)."个测试点，数据已写入 /data/problems/$pid/"]);
 if (isset($tmp) && file_exists($tmp)) @unlink($tmp);

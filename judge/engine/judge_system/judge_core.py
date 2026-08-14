@@ -297,13 +297,22 @@ def main():
             if dsrc and os.path.isdir(dsrc):
                 ic = os.path.join(dsrc, "interactor.cpp")
                 if os.path.exists(ic):
-                    iexe = os.path.join(shared_root if "shared_root" in dir() else args.shared_dir, "interactor_exe")
-                    rc, o, e = run_proc(["g++", "-O2", "-o", iexe, ic, "-I", "/judge_system"], 60, dsrc)
-                    if rc == 0:
-                        inter_cmd = [iexe]; interactive = True
-                    else:
-                        result["status"]="failed"; result["system_error"]="interactor 编译失败:\n" + (e or o)[-500:]
-                        (Path(args.output_dir)/"result.json").write_text(json.dumps(result, ensure_ascii=False)); return
+                    # 预编译缓存：按 interactor.cpp 源码 MD5 缓存 exe 到共享卷根（跨评测复用，避免每次编译）
+                    import hashlib
+                    md5 = hashlib.md5(open(ic, 'rb').read()).hexdigest()[:16]
+                    shared_root = os.path.dirname(args.shared_dir)   # /tmp/shared（跨任务共享）
+                    cache_dir = os.path.join(shared_root, "interactor_cache", md5)
+                    os.makedirs(cache_dir, exist_ok=True)
+                    iexe = os.path.join(cache_dir, "interactor_exe")
+                    if not os.path.exists(iexe):
+                        tmp_exe = iexe + ".tmp"
+                        rc, o, e = run_proc(["g++", "-O2", "-o", tmp_exe, ic, "-I", "/judge_system"], 60, dsrc)
+                        if rc != 0:
+                            result["status"]="failed"; result["system_error"]="interactor 编译失败:\n" + (e or o)[-500:]
+                            (Path(args.output_dir)/"result.json").write_text(json.dumps(result, ensure_ascii=False)); return
+                        try: os.replace(tmp_exe, iexe)   # 原子替换，防并发
+                        except Exception: pass
+                    inter_cmd = [iexe]; interactive = True
                     break
                 ip = os.path.join(dsrc, "interactor.py")
                 if os.path.exists(ip):
