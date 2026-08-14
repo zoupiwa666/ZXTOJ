@@ -44,11 +44,15 @@ def run_interactive(sol_cmd, inter_cmd, in_file, ans_file, tl, ml, workdir):
         start = time.time()
         hard_tl = max(tl * 3 + 10, 60)   # 交互总超时上限（含交互往返）
         grace = 3.0                      # 一侧结束、另一侧的 EOF 宽限
-        sol_rc = None; inter_rc = None; timeout = False
+        sol_rc = None; inter_rc = None; timeout = False; first_exit = None
         try:
             while True:
-                if sol_rc is None: sol_rc = sol.poll()
-                if inter_rc is None: inter_rc = inter.poll()
+                if sol_rc is None:
+                    sol_rc = sol.poll()
+                    if sol_rc is not None and first_exit is None: first_exit = ('sol', sol_rc)
+                if inter_rc is None:
+                    inter_rc = inter.poll()
+                    if inter_rc is not None and first_exit is None: first_exit = ('inter', inter_rc)
                 if sol_rc is not None and inter_rc is not None:
                     break
                 if time.time() - start > hard_tl:
@@ -91,8 +95,13 @@ def run_interactive(sol_cmd, inter_cmd, in_file, ans_file, tl, ml, workdir):
         if inter_rc == 0:
             return {"verdict": V_AC, "time_used": elapsed, "memory_used": mem,
                     "exit_code": sol_rc, "error": None}
+        # interactor 已明确判定失败（testlib: 1=WA 2=PE 3=FAIL 4=DIRT）：
+        # 选手随后因管道 SIGPIPE（-13）被信号打断，属于交互正常结束，应保留 interactor 的判定（WA）
+        if inter_rc in (1, 2, 3, 4) and (first_exit and first_exit[0] == 'inter' or sol_rc == -13):
+            return {"verdict": V_WA, "time_used": elapsed, "memory_used": mem,
+                    "exit_code": sol_rc, "error": f"交互判定失败 (interactor exit={inter_rc})"}
         if sol_rc not in (0, None):
-            # 选手自身崩溃（信号退出等）→ RE
+            # 选手自身崩溃（先于 interactor 判定，信号退出等）→ RE
             return {"verdict": V_RE, "time_used": elapsed, "memory_used": mem,
                     "exit_code": sol_rc, "error": f"运行时错误 (exit={sol_rc})"}
         return {"verdict": V_WA, "time_used": elapsed, "memory_used": mem,
